@@ -3,7 +3,7 @@
  * Plugin Name:       Power Element | 一些自製的 Shortcode, Elementor Widget
  * Plugin URI:        https://github.com/j7-dev/wp-power-element
  * Description:       一些自製的 Shortcode, Elementor Widget
- * Version:           0.0.1
+ * Version:           4.0.10
  * Requires at least: 5.7
  * Requires PHP:      8.1
  * Author:            J7
