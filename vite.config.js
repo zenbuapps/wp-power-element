@@ -12,7 +12,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 export default defineConfig({
 	css: {
 		preprocessorOptions: {
-			scss: {api: 'modern-compiler'},
+			scss: { api: 'modern-compiler' },
 		},
 		// postcss: {
 		//     plugins: [
@@ -35,43 +35,43 @@ export default defineConfig({
 		//     ]
 		// }
 	},
-  build: {
-    emptyOutDir: true,
-    minify: true,
-    outDir: path.resolve(__dirname, 'js/dist'),
+	build: {
+		emptyOutDir: true,
+		minify: true,
+		outDir: path.resolve(__dirname, 'js/dist'),
 
-    // watch: {
-    //   include: ['js/src/**', 'inc/**'],
-    //   exclude: 'node_modules/**, .git/**, dist/**, .vscode/**',
-    // },
+		// watch: {
+		//   include: ['js/src/**', 'inc/**'],
+		//   exclude: 'node_modules/**, .git/**, dist/**, .vscode/**',
+		// },
 
-    rollupOptions: {
-      input: 'js/src/main.ts', // Optional, defaults to 'src/main.js'.
-      output: {
-        assetFileNames: 'assets/[ext]/index.[ext]',
-        entryFileNames: 'index.js',
-      },
-    },
-  },
-  plugins: [
+		rollupOptions: {
+			input: 'js/src/main.ts', // Optional, defaults to 'src/main.js'.
+			output: {
+				assetFileNames: 'assets/[ext]/index.[ext]',
+				entryFileNames: 'index.js',
+			},
+		},
+	},
+	plugins: [
 		vue(),
 		vueDevTools(),
-    alias(),
-    tsconfigPaths(),
+		alias(),
+		tsconfigPaths(),
 
-    // liveReload([
-    //   __dirname + '/**/*.php',
-    //   __dirname + '/js/dist/**/*',
-    //   __dirname + '/js/src/**/*.tsx',
-    // ]), // Optional, if you want to reload page on php changed
+		// liveReload([
+		//   __dirname + '/**/*.php',
+		//   __dirname + '/js/dist/**/*',
+		//   __dirname + '/js/src/**/*.tsx',
+		// ]), // Optional, if you want to reload page on php changed
 
-    optimizer({
-      jquery: 'const $ = window.jQuery; export { $ as default }',
-    }),
-  ],
+		optimizer({
+			jquery: 'const $ = window.jQuery; export { $ as default }',
+		}),
+	],
 	resolve: {
 		alias: {
-			'@': fileURLToPath(new URL('./js/src', import.meta.url))
+			'@': fileURLToPath(new URL('./js/src', import.meta.url)),
 		},
 	},
 })

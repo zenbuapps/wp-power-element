@@ -1,18 +1,18 @@
 <?php
 /**
  * Plugin Name:       Power Element | 一些自製的 Shortcode, Elementor Widget
- * Plugin URI:        https://cloud.luke.cafe/plugins/
- * Description:       your description
+ * Plugin URI:        https://github.com/j7-dev/wp-power-element
+ * Description:       一些自製的 Shortcode, Elementor Widget
  * Version:           0.0.1
  * Requires at least: 5.7
- * Requires PHP:      8.0
- * Author:            Your Name
- * Author URI:        [YOUR GITHUB URL]
+ * Requires PHP:      8.1
+ * Author:            J7
+ * Author URI:        https://github.com/j7-dev/wp-power-element
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       power_element
  * Domain Path:       /languages
- * Tags: your tags
+ * Tags: elementor, widget, shortcode
  */
 
 declare (strict_types = 1);
@@ -54,8 +54,9 @@ final class Plugin {
 		$this->init(
 			[
 				'app_name'    => 'Power Element',
-				'github_repo' => '[YOUR GITHUB URL]/power-element',
+				'github_repo' => 'https://github.com/j7-dev/wp-power-element',
 				'callback'    => [ Bootstrap::class, 'instance' ],
+                'lc' => 'ZmFsc2'
 			]
 		);
 	}

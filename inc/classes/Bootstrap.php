@@ -4,14 +4,19 @@ declare (strict_types = 1);
 
 namespace J7\PowerElement;
 
+use J7\PowerElement\Shortcodes;
+
 /** Class Bootstrap */
 final class Bootstrap {
 	use \J7\WpUtils\Traits\SingletonTrait;
 
 	/** Constructor */
 	public function __construct() {
-		\add_action('admin_enqueue_scripts', [ __CLASS__, 'admin_enqueue_script' ]);
-		\add_action('wp_enqueue_scripts', [ __CLASS__, 'frontend_enqueue_script' ]);
+		Shortcodes\Register::register_hooks();
+		ElementorWidgets\Register::register_hooks();
+
+		\add_action('admin_enqueue_scripts', [ __CLASS__, 'admin_enqueue_script' ], 200);
+		\add_action('wp_enqueue_scripts', [ __CLASS__, 'frontend_enqueue_script' ], 200);
 	}
 
 	/**
