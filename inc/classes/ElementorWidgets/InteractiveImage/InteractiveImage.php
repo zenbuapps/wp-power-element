@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace J7\PowerElement\ElementorWidgets\InteractiveImage;
 
+use J7\PowerElement\Bootstrap;
+use J7\PowerElement\ElementorWidgets\InteractiveImage\Shared\Enums\EField;
 use J7\PowerElement\ElementorWidgets\Shared\Utils\ControlUtils;
 use J7\PowerElement\Shortcodes\InteractiveImage\InteractiveImage as Shortcode;
 
 final class InteractiveImage extends \Elementor\Widget_Base {
 
+	/** @var string name */
+	private string $name = 'pe_interactive_image';
 
 	/** @return string 取得小工具名稱 */
 	public function get_name(): string {
-		[$shortcode_name] = Shortcode::get_info();
-		return $shortcode_name;
+		return $this->name;
 	}
 
 	/** @return string 取得小工具標題 */
@@ -44,21 +47,21 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 	public function get_custom_help_url(): string {
 		return 'https://github.com/j7-dev/wp-power-element';
 	}
-	//
-	// public function get_script_depends(): array {
-	// return [ 'script-handle' ];
-	// }
-	//
-	// public function get_style_depends(): array {
-	// return [ 'style-handle' ];
-	// }
+
+	public function get_script_depends(): array {
+		return [ Bootstrap::get_handle($this->name) ];
+	}
+
+	public function get_style_depends(): array {
+		return [ Bootstrap::get_handle($this->name) ];
+	}
 
 	protected function register_controls(): void {
 
 		$this->start_controls_section(
 			'content_section',
 			[
-				'label' => esc_html__('Content', 'textdomain'),
+				'label' => \esc_html__('Content', 'power_element'),
 				'tab'   => \Elementor\Controls_Manager::TAB_CONTENT,
 			]
 		);
@@ -75,6 +78,17 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		// region float_images
 
 		$float_image_repeater = new \Elementor\Repeater();
+
+		$float_image_repeater->add_control(
+			'title',
+			[
+				'label' => '圖片名稱(不顯示)',
+				'type'  => \Elementor\Controls_Manager::TEXT,
+				'ai'    => [
+					'active' => false,
+				],
+			]
+		);
 
 		$float_image_repeater->add_control(
 			'image',
@@ -133,7 +147,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 				'type'        => \Elementor\Controls_Manager::REPEATER,
 				'fields'      =>$float_image_repeater->get_controls(),
 				'default'     => [],
-				'title_field' => '圖片',
+				'title_field' => '{{{title}}}',
 			]
 		);
 
@@ -144,12 +158,57 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		$items_repeater = new \Elementor\Repeater();
 
 		$items_repeater->add_control(
+			'title',
+			[
+				'label' => 'Icon 名稱(不顯示)',
+				'type'  => \Elementor\Controls_Manager::TEXT,
+				'ai'    => [
+					'active' => false,
+				],
+			]
+		);
+
+		$items_repeater->add_control(
 			'post_id',
 			[
-				'label' => '綁定的文章 id',
-				'type'  => \Elementor\Controls_Manager::NUMBER,
-				'min'   => 0,
-			],
+				'label'   => '綁定的文章 id',
+				'type'    => \Elementor\Controls_Manager::TEXT,
+				'dynamic' => [
+					'active' => true,
+				],
+				'ai'      => [
+					'active' => false,
+				],
+			]
+		);
+
+		$items_repeater->add_control(
+			'display_items',
+			[
+				'label'       => '要顯示的內容',
+				'type'        => \Elementor\Controls_Manager::SELECT2,
+				'label_block' => true,
+				'multiple'    => true,
+				'options'     => [
+					'featured_image'      => '文章縮圖',
+					'title'               => '文章標題',
+					'excerpt'             => '文章摘要',
+					'author_display_name' => '作者名稱',
+				],
+				'default'     => [ 'featured_image', 'title', 'excerpt', 'author_display_name' ],
+			]
+		);
+
+		$items_repeater->add_control(
+			'meta_key',
+			[
+				'label' => '額外要顯示的 meta_key',
+                'description' => '可以用逗號 , 隔開多個 meta_key',
+				'type'  => \Elementor\Controls_Manager::TEXT,
+				'ai'    => [
+					'active' => false,
+				],
+			]
 		);
 
 		$items_repeater->add_control(
@@ -157,6 +216,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			[
 				'type'        => \Elementor\Controls_Manager::ICONS,
 				'label'       => 'ICON',
+                'description' => '限制 svg',
 				'skin'        => 'inline',
 				'recommended' => [
 					'fa-solid' => [
@@ -206,17 +266,29 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		$this->add_control(
 			'items',
 			[
-				'label'   => '跳動 Icon',
-				'type'    => \Elementor\Controls_Manager::REPEATER,
-				'fields'  =>$items_repeater->get_controls(),
-				'default' => [],
-				'title_field' => 'Icon',
+				'label'       => '跳動 Icon',
+				'type'        => \Elementor\Controls_Manager::REPEATER,
+				'fields'      =>$items_repeater->get_controls(),
+				'default'     => [],
+				'title_field' => '{{{title}}}',
 			]
 		);
 
 		// endregion
 
+		$this->add_control(
+			'is_unique',
+			[
+				'label'   => '隱藏列表中，綁定相同的 post_id 項目',
+				'type'    => \Elementor\Controls_Manager::SWITCHER ,
+				'default' => 'yes',
+		// 'frontend_available' => true,
+			]
+		);
+
 		$this->end_controls_section();
+
+		Styles::register_controls($this);
 	}
 
 	/** @return array 顯示促銷資訊 在小工具面板的下方 */
@@ -231,18 +303,19 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 	 * @throws \Exception 當渲染失敗時拋出例外
 	 */
 	protected function render(): void {
-
 		$settings = $this->get_settings_for_display();
 
-		echo '<div class="pe-interactive-image flex flex-col lg:flex-row shadow-xl">';
+        echo EField::get_styles($settings);
+
+		\printf('<div class="pe_interactive_image" data-is-unique="%1$s">', $settings['is_unique'] ?? 'yes');
 		// region 開始左半邊
-		echo '<div data-interactive-image-left class="w-full lg:w-2/3">';
+		echo '<div class="pe_interactive_image__left">';
 
 		// region 開始 background_image
 		echo '<div class="relative">';
 
 		\printf(
-			'<img data-bg-image class="w-full" src="%1$s">',
+			'<img class="pe_interactive_image__bg_image w-full" src="%1$s">',
 			$settings['background_image']['url']
 		);
 
@@ -254,8 +327,8 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			$position    = $item['position'];
 
 			\printf(
-			'<img src="%1$s" data-float-image class="absolute transition duration-300 z-10" style="%2$s %3$s" />
-							<img src="%4$s" data-float-hover-image class="absolute transition duration-300 z-20 tw-hidden" style="%2$s %3$s" />
+			'<img src="%1$s" class="pe_interactive_image__image" style="%2$s %3$s" />
+							<img src="%4$s" class="pe_interactive_image__image--hover" style="%2$s %3$s" />
 							',
 			$image['url'],
 			ControlUtils::get_position_styles_from_dimension($position),
@@ -267,9 +340,8 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 
 		// -- 圖標 -- //
 		foreach ($settings['items'] as $item) :
-
 			\printf(
-				'<div data-icon class="absolute animate-bounce z-30 cursor-pointer " style="%s">',
+				'<div class="pe_interactive_image__icon" style="%s">',
 				ControlUtils::get_position_styles_from_dimension($item['position']) . ControlUtils::get_styles_from_image_width($item['icon_width'])
 			);
 			\Elementor\Icons_Manager::render_icon(
@@ -277,30 +349,32 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 				[
 					'aria-hidden' => 'true',
 					'class'       => ' ',
-					'style'       => "fill:{$item['icon_color']};",
-				]
+					'style'       => "color:{$item['icon_color']};fill:{$item['icon_color']};",
+				],
+				'svg'
 				);
 
 			// region 縮圖卡片
-			$post_id = $item['post_id'] ?? null;
-			if (\is_numeric($post_id)) {
+			$bound_post_id = $item['post_id'] ?? null;
+
+			if (\is_numeric($bound_post_id)) {
+				$content = self::get_card_content($item, $settings);
+
 				\printf(
 					'
- 									<a href="%5$s" target="_blank" style="text-decoration: none;color: unset">
-										<div data-card-id="%4$s" class="w-40 p-2 rounded-md bg-white shadow-md absolute left-1/2" style="top:-1rem;transform: translate(-50%%, -100%%);display: none;">
-														<img src="%1$s" class="w-full h-full object-cover rounded-md mb-2"/>
-														<h3 class="text-sm m-0 font-normal">%2$s</h3>
-														<p class="text-xs m-0 font-thin">%3$s</p>
-										</div>
+                   <a href="%1$s" target="_blank">
+                        <div data-card-id="%2$s" data-card-post-id="%3$s" class="pe_interactive_image__card">
+                            %4$s
+                        </div>
                   </a>
                 ',
-					\esc_url(\get_the_post_thumbnail_url($post_id, 'medium')),
-					\esc_html(\get_the_title($post_id)),
-					\esc_html(\get_the_excerpt($post_id)),
+					\esc_url(\get_permalink($bound_post_id)),
 					$item['_id'],
-					\esc_url(\get_permalink($post_id))
-				);
+					$item['post_id'],
+					$content,
+					);
 			}
+
 			// endregion
 
 			echo '</div>';
@@ -313,27 +387,42 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		// endregion  結束左半邊
 
 		// region 開始右半邊
-		echo '<div data-interactive-image-right class="w-full lg:w-1/3 bg-white overflow-y-auto">';
+		echo '<div class="pe_interactive_image__right">';
 		echo '<div class="p-4">';
 
-		foreach ($settings['items'] as $item) :
-			$post_id = $item['post_id'] ?? null;
-			if (!\is_numeric($post_id)) {
+		$is_unique = ( $settings['is_unique'] ?? 'yes' ) === 'yes';
+		$items     = $settings['items'];
+		if ( $is_unique) {
+			// 移除 items 裡面 item['post_id'] 重複的項目
+			$items = \array_filter(
+				$items,
+				function ( $item ) use ( &$seen ) {
+					if (isset($seen[ $item['post_id'] ])) {
+						return false;
+					}
+					$seen[ $item['post_id'] ] = true;
+					return true;
+				}
+				);
+		}
+
+		foreach ( $items as $item) :
+			$bound_post_id = $item['post_id'] ?? null;
+			if (!\is_numeric($bound_post_id)) {
 				continue;
 			}
+			$content = self::get_list_content($item, $settings);
 			\printf(
 				'
-            <a href="%1$s" target="_blank" style="text-decoration: none;color: unset">
-                <div data-list-item-id="%4$s" class="rounded-md hover:bg-gray-100 bg-white transition duration-300 p-4 mb-1">
-                    <h3 class="text-lg m-0 font-semibold">%2$s</h3>
-                    <p class="text-sm m-0 font-normal">%3$s</p>
+            <a href="%1$s" target="_blank">
+                <div data-list-item-id="%2$s" class="pe_interactive_image__list_item">
+                    %3$s
                 </div>
             </a>
             ',
-				\esc_url(\get_permalink($post_id)),
-				\esc_html(\get_the_title($post_id)),
-				\esc_html(\get_the_excerpt($post_id)),
-				$item['_id']
+				\esc_url(\get_permalink($bound_post_id)),
+				$is_unique ? $item['post_id'] : $item['_id'],
+				$content,
 				);
 
 			endforeach;
@@ -343,69 +432,104 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		// endregion 結束右半邊
 
 		echo '</div>';
+	}
 
-//		echo '<pre>';
-//		var_dump($settings['float_images'][0]);
-//		echo '</pre>';
+	/**
+	 * 取得動態內容
+	 *
+	 * @param array $item
+	 * @return string
+	 */
+	private static function get_card_content( array $item, array $settings ): string {
+		$bound_post_id = $item['post_id'] ?? null;
+		if (!\is_numeric($bound_post_id)) {
+			return '';
+		}
+		$display_items           = $item['display_items'] ?? [];
+		$has_featured_image      = \in_array('featured_image', $display_items, true);
+		$has_title               = \in_array('title', $display_items, true);
+		$has_excerpt             = \in_array('excerpt', $display_items, true);
+		$has_author_display_name = \in_array('author_display_name', $display_items, true);
 
-		// [$shortcode_name] = Shortcode::get_info();
-		// echo \do_shortcode("[{$shortcode_name}]");
+		$content = '';
+		if ($has_featured_image) {
+			$content .= sprintf('<img src="%1$s" class="pe_interactive_image__card__image"/>', \esc_url(\get_the_post_thumbnail_url($bound_post_id, 'medium')));
+		}
 
-		?>
+		if ($has_title ) {
+			$content .= sprintf( '<h4>%1$s</h4>', \esc_html(\get_the_title($bound_post_id)) );
+		}
 
-		<script async>
-					(function($){
-						$(document).ready(function(){
+		if ($has_excerpt ) {
+			$content .= sprintf( '<p>%1$s</p>', \esc_html(\get_the_excerpt($bound_post_id)) );
+		}
 
-							// 互動效果，滑鼠 hover list item 時顯示卡片
-							$('.pe-interactive-image').on('mouseenter', 'div[data-list-item-id]', function(){
-								const id = $(this).data('list-item-id')
-								$(`div[data-card-id]:not([data-card-id=${id}])`).fadeOut()
-								$(`div[data-card-id=${id}]`).fadeIn();
-							});
+		if ($has_author_display_name ) {
+			$post_author_id = \get_post_field('post_author', $bound_post_id);
+			$author_name    = \get_the_author_meta('display_name', $post_author_id);
+			$content       .= sprintf('<p>%1$s</p>', $author_name);
+		}
 
-							// 滑鼠移出 card div 時隱藏卡片
-							$('.pe-interactive-image').on('mouseleave', 'div[data-card-id]', function(){
-								$(this).fadeOut();
-							});
+		$meta_key = $item['meta_key'] ?? '';
+		if (\is_string($meta_key) && $meta_key) {
+			$meta_keys = self::parse_comma_string($meta_key);
+			foreach ($meta_keys as $meta_key) {
+				$value    = \get_post_meta($bound_post_id, $meta_key, true);
+				$content .= "<p>{$value}</p>";
+			}
+		}
 
-							// hover 建築物時，替換為 hover-src
-							$('.pe-interactive-image').on('mouseenter', 'img[data-float-image]', function(){
-								const $nextHoverImg = $(this).next('img[data-float-hover-image]');
-								$nextHoverImg.fadeIn();
-							});
+		return $content;
+	}
 
-							// 滑鼠移出建築物時，替換為 original-src
-							$('.pe-interactive-image').on('mouseleave', 'img[data-float-hover-image]', function(){
-								$(this).fadeOut()
-							});
+	public static function parse_comma_string( string $str ): array {
+		$arr = \explode(',', $str);
+		$arr = \array_map('trim', $arr);
+		$arr = \array_filter($arr);
+		return $arr;
+	}
 
-							// 點擊 icon 時，顯示卡片
-							$('.pe-interactive-image').on('click', 'div[data-icon]', function(){
-								const card = $(this).find('div[data-card-id]')
-								const id = card.data('card-id]');
-								$(`div[data-card-id]:not([data-card-id=${id}])`).fadeOut()
-								card.fadeIn()
-							});
+	/**
+	 * 取得動態內容
+	 *
+	 * @param array $item
+	 * @return string
+	 */
+	private static function get_list_content( array $item, array $settings ): string {
+		$bound_post_id = $item['post_id'] ?? null;
+		if (!\is_numeric($bound_post_id)) {
+			return '';
+		}
+		$display_items           = $item['display_items'] ?? [];
+		$has_title               = \in_array('title', $display_items, true);
+		$has_excerpt             = \in_array('excerpt', $display_items, true);
+		$has_author_display_name = \in_array('author_display_name', $display_items, true);
 
-							setListHeight();
+		$content = '';
 
-							// $(window).resize(function(){
-							// debounce
-							// 	setListHeight();
-							// })
+		if ($has_title ) {
+			$content .= \sprintf( '<h4>%1$s</h4>', \esc_html(\get_the_title($bound_post_id)) );
+		}
 
-							// 將列表高度與圖片等高，超過就顯示 scroll
-							function setListHeight(){
-								const imgH = $('img[data-bg-image]').height();
-								$('div[data-interactive-image-right]').height(imgH)
-							}
+		if ($has_excerpt ) {
+			$content .= \sprintf( '<p>%1$s</p>', \esc_html(\get_the_excerpt($bound_post_id)) );
+		}
 
-						})
-					})(jQuery)
+		if ($has_author_display_name ) {
+			$post_author_id = \get_post_field('post_author', $bound_post_id);
+			$author_name    = \get_the_author_meta('display_name', $post_author_id);
+			$content       .= sprintf('<p>%1$s</p>', $author_name);
+		}
 
-		</script>
+		$meta_key = $item['meta_key'] ?? '';
+		if (\is_string($meta_key) && $meta_key) {
+			$meta_keys = self::parse_comma_string($meta_key);
+			foreach ($meta_keys as $meta_key) {
+				$value    = \get_post_meta($bound_post_id, $meta_key, true);
+				$content .= "<p>{$value}</p>";
+			}
+		}
 
-		<?php
+		return $content;
 	}
 }

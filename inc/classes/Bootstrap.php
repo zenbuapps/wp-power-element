@@ -4,32 +4,24 @@ declare (strict_types = 1);
 
 namespace J7\PowerElement;
 
-use J7\PowerElement\Shortcodes;
-
 /** Class Bootstrap */
 final class Bootstrap {
 	use \J7\WpUtils\Traits\SingletonTrait;
+
+	/** @var array<array<string>> 元件名稱 => 依賴  */
+	private static array $components = [
+		'ButtonA' => [ 'react', 'react-dom', 'react-jsx-runtime', 'wp-element' ],
+		'ButtonB' => [ 'react', 'react-dom', 'react-jsx-runtime', 'wp-element' ],
+		'pe_interactive_image' => [ 'react', 'react-dom', 'react-jsx-runtime', 'wp-element' ],
+	];
 
 	/** Constructor */
 	public function __construct() {
 		Shortcodes\Register::register_hooks();
 		ElementorWidgets\Register::register_hooks();
 
-		\add_action('admin_enqueue_scripts', [ __CLASS__, 'admin_enqueue_script' ], 200);
-		\add_action('wp_enqueue_scripts', [ __CLASS__, 'frontend_enqueue_script' ], 200);
-	}
-
-	/**
-	 * Admin Enqueue script
-	 * You can load the script on demand
-	 *
-	 * @param string $hook current page hook
-	 *
-	 * @return void
-	 */
-	public static function admin_enqueue_script( $hook ): void {
-		self::enqueue_script();
-	}
+		\add_action('wp_enqueue_scripts', [ __CLASS__, 'frontend_register_script' ], 200);
+    }
 
 	/**
 	 * Enqueue script
@@ -37,34 +29,62 @@ final class Bootstrap {
 	 *
 	 * @return void
 	 */
-	public static function enqueue_script(): void {
+	public static function frontend_register_script(): void {
+		foreach (self::$components as $name => $deps) {
+			\wp_register_script(
+				self::get_handle($name),
+				Plugin::$url . "/js/dist/components/{$name}/index.js",
+				$deps,
+				Plugin::$version,
+				[
+					'in_footer' => true,
+					'strategy'  => 'async',
+				]
+			);
 
-		\wp_enqueue_script(
-			Plugin::$kebab,
-			Plugin::$url . '/js/dist/index.js',
-			[ 'jquery' ],
-			Plugin::$version,
-			[
-				'in_footer' => true,
-				'strategy'  => 'async',
-			]
-		);
+			Plugin::instance()->add_module_handle(self::get_handle($name));
 
-		\wp_enqueue_style(
-			Plugin::$kebab,
-			Plugin::$url . '/js/dist/assets/css/index.css',
-			[],
-			Plugin::$version
-		);
+			\wp_register_style(
+				self::get_handle($name),
+				Plugin::$url . "/js/dist/components/{$name}/index.css",
+				[],
+				Plugin::$version
+			);
+		}
 	}
 
 	/**
-	 * Front-end Enqueue script
-	 * You can load the script on demand
+	 * 取得 handle
 	 *
-	 * @return void
+	 * @param string $name component name
+	 * @return string
 	 */
-	public static function frontend_enqueue_script(): void {
-		self::enqueue_script();
+	public static function get_handle( string $name ): string {
+		return Plugin::$kebab . "-{$name}";
+	}
+
+	/**
+	 * 載入元件資源
+	 *
+	 * @param string $name component name
+	 * @return void
+	 * @throws \Exception 如果不是元件
+	 */
+	public function enqueue( string $name ): void {
+		if (!self::is_component($name)) {
+			throw new \Exception("{$name} is not a component");
+		}
+		\wp_enqueue_script(self::get_handle($name));
+		\wp_enqueue_style(self::get_handle($name));
+	}
+
+	/**
+	 * 是否為 components
+	 *
+	 * @param string $name component name
+	 * @return bool
+	 */
+	public static function is_component( string $name ): bool {
+		return isset(self::$components[ $name ]);
 	}
 }
