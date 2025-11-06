@@ -1,6 +1,6 @@
 {
 	"name": "wp-power-element",
-	"version": "0.0.5",
+	"version": "0.0.7",
 	"type": "module",
 	"scripts": {
 		"bootstrap": "pnpm install && composer install --no-interaction",

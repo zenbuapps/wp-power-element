@@ -25,11 +25,6 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		return $label;
 	}
 
-	/** @return string 取得小工具圖示 */
-	public function get_icon(): string {
-		return 'eicon-image-hotspot';
-	}
-
 	/** @return array 取得小工具分類 */
 	public function get_categories(): array {
 		return [ 'general' ];
@@ -61,7 +56,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		$this->start_controls_section(
 			'content_section',
 			[
-				'label' => \esc_html__('Content', 'power_element'),
+				'label' => \esc_html__('背景設定', 'power_element'),
 				'tab'   => \Elementor\Controls_Manager::TAB_CONTENT,
 			]
 		);
@@ -75,14 +70,24 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			]
 		);
 
-		// region float_images
+		$this->end_controls_section();
+
+		// region float_images 圖片設定
+
+		$this->start_controls_section(
+			'float_images_section',
+			[
+				'label' => \esc_html__('圖片設定', 'power_element'),
+				'tab'   => \Elementor\Controls_Manager::TAB_CONTENT,
+			]
+		);
 
 		$float_image_repeater = new \Elementor\Repeater();
 
 		$float_image_repeater->add_control(
 			'title',
 			[
-				'label' => '圖片名稱(不顯示)',
+				'label' => '名稱(不顯示)',
 				'type'  => \Elementor\Controls_Manager::TEXT,
 				'ai'    => [
 					'active' => false,
@@ -99,6 +104,9 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 				'default'     => [
 					'url' => \Elementor\Utils::get_placeholder_image_src(),
 				],
+				'selectors'   => [
+					'{{WRAPPER}} {{CURRENT_ITEM}}.pe_interactive_image__image' => 'background-image: url({{URL}});',
+				],
 			]
 		);
 
@@ -109,22 +117,50 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 				'type'        => \Elementor\Controls_Manager::MEDIA,
 				'media_types' => [ 'image' ], // 可選：限制媒體類型
 				'default'     => [],
+				'selectors'   => [
+					'{{WRAPPER}} {{CURRENT_ITEM}}.pe_interactive_image__image:hover' => 'background-image: url({{URL}});',
+				],
 			]
 		);
 
 		$float_image_repeater->add_control(
-			'position',
+			'position_top',
 			[
-				'label'      => '絕對位置(%)',
-				'type'       => \Elementor\Controls_Manager::DIMENSIONS,
-				'size_units' => [ '%' ],
-				'default'    => [
-					'top'      => 0,
-					'right'    => 0,
-					'bottom'   => 0,
-					'left'     => 0,
-					'unit'     => '%',
-					'isLinked' => false,
+				'label'     => '絕對位置(上)(%)',
+				'type'      => \Elementor\Controls_Manager::SLIDER,
+				'range'     => [
+					'%' => [
+						'min' => 0,
+						'max' => 100,
+					],
+				],
+				'default'   => [
+					'unit' => '%',
+					'size' => 0,
+				],
+				'selectors' => [
+					'{{WRAPPER}} {{CURRENT_ITEM}}.pe_interactive_image__image' => 'top: {{SIZE}}{{UNIT}};',
+				],
+			],
+		);
+
+		$float_image_repeater->add_control(
+			'position_left',
+			[
+				'label'     => '絕對位置(左)(%)',
+				'type'      => \Elementor\Controls_Manager::SLIDER,
+				'range'     => [
+					'%' => [
+						'min' => 0,
+						'max' => 100,
+					],
+				],
+				'default'   => [
+					'unit' => '%',
+					'size' => 0,
+				],
+				'selectors' => [
+					'{{WRAPPER}} {{CURRENT_ITEM}}.pe_interactive_image__image' => 'left: {{SIZE}}{{UNIT}};',
 				],
 			],
 		);
@@ -132,35 +168,69 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		$float_image_repeater->add_control(
 			'image_width',
 			[
-				'label'   => '圖片寬度尺寸(%)',
-				'type'    => \Elementor\Controls_Manager::NUMBER,
-				'min'     => 0,
-				'max'     => 100,
-				'default' => 20,
+				'label'     => '圖片寬度(%)',
+				'type'      => \Elementor\Controls_Manager::SLIDER,
+				'range'     => [
+					'%' => [
+						'min' => 0,
+						'max' => 100,
+					],
+				],
+				'default'   => [
+					'unit' => '%',
+					'size' => 10,
+				],
+				'selectors' => [
+					'{{WRAPPER}} {{CURRENT_ITEM}}.pe_interactive_image__image' => 'width: {{SIZE}}{{UNIT}};margin-top: calc({{SIZE}}{{UNIT}}/2 * -1);margin-left: calc({{SIZE}}{{UNIT}}/2 * -1);',
+				],
 			],
 		);
 
 		$this->add_control(
 			'float_images',
 			[
-				'label'       => '圖片',
-				'type'        => \Elementor\Controls_Manager::REPEATER,
-				'fields'      =>$float_image_repeater->get_controls(),
-				'default'     => [],
-				'title_field' => '{{{title}}}',
+				'label'         => '圖片設定',
+				'show_label'    => false,
+				'type'          => \Elementor\Controls_Manager::REPEATER,
+				'fields'        =>$float_image_repeater->get_controls(),
+				'default'       => [],
+				'prevent_empty' => false,
+				'title_field'   => '{{{title}}}',
 			]
 		);
 
+		$this->end_controls_section();
 		// endregion
 
 		// region items (icons)
+
+		$this->start_controls_section(
+			'items_section',
+			[
+				'label' => \esc_html__('Icons 設定', 'power_element'),
+				'tab'   => \Elementor\Controls_Manager::TAB_CONTENT,
+			]
+		);
+
+		$this->add_control(
+			'icon_alert',
+			[
+				'type'       => \Elementor\Controls_Manager::ALERT,
+				'alert_type' => 'warning',
+				'heading'    => '只允許圖片類型 Icon',
+				'content'    => \sprintf(
+					'只能使用圖片類型 Icon (.png, jpg, gif, svg)，字體種類 Icon 無法調整寬度，如果要使用 Icon 圖示庫 請確保 <a target="_blank" href="%s">[ Elementor > 設定 > Features > Inline Font Icons ]</a>，的 Inline Font Icons 功能 <span style="color: green">已啟用</span> ',
+					\admin_url('admin.php?page=elementor-settings#tab-experiments')
+				),
+			]
+		);
 
 		$items_repeater = new \Elementor\Repeater();
 
 		$items_repeater->add_control(
 			'title',
 			[
-				'label' => 'Icon 名稱(不顯示)',
+				'label' => '名稱(不顯示)',
 				'type'  => \Elementor\Controls_Manager::TEXT,
 				'ai'    => [
 					'active' => false,
@@ -168,15 +238,128 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			]
 		);
 
+		// region 內容類型分頁 Tabs
+
+		$items_repeater->start_controls_tabs(
+			'content_type_tabs'
+		);
+
+		// region Icon 設定 Tab
+		$items_repeater->start_controls_tab(
+			'icon_tab',
+			[
+				'label' => 'Icon 設定',
+			]
+		);
+
+		$items_repeater->add_control(
+			'icon',
+			[
+				'type'        => \Elementor\Controls_Manager::ICONS,
+				'label'       => 'ICON',
+				'description' => ControlUtils::get_icon() . ' 只允許圖片類型 Icon',
+				'skin'        => 'inline',
+				'recommended' => [
+					'fa-solid' => [
+						'map-marker-alt',
+					],
+				],
+			],
+		);
+
+		$items_repeater->add_control(
+			'position_top',
+			[
+				'label'     => '絕對位置(上)(%)',
+				'type'      => \Elementor\Controls_Manager::SLIDER,
+				'range'     => [
+					'%' => [
+						'min' => 0,
+						'max' => 100,
+					],
+				],
+				'default'   => [
+					'unit' => '%',
+					'size' => 0,
+				],
+				'selectors' => [
+					'{{WRAPPER}} {{CURRENT_ITEM}}.pe_interactive_image__icon' => 'top: {{SIZE}}{{UNIT}};',
+				],
+			],
+		);
+
+		$items_repeater->add_control(
+			'position_left',
+			[
+				'label'     => '絕對位置(左)(%)',
+				'type'      => \Elementor\Controls_Manager::SLIDER,
+				'range'     => [
+					'%' => [
+						'min' => 0,
+						'max' => 100,
+					],
+				],
+				'default'   => [
+					'unit' => '%',
+					'size' => 0,
+				],
+				'selectors' => [
+					'{{WRAPPER}} {{CURRENT_ITEM}}.pe_interactive_image__icon' => 'left: {{SIZE}}{{UNIT}};',
+				],
+			],
+		);
+
+		$items_repeater->add_control(
+			'icon_width',
+			[
+				'label'     => 'Icon 寬度(%)',
+				'type'      => \Elementor\Controls_Manager::SLIDER,
+				'range'     => [
+					'%' => [
+						'min' => 0,
+						'max' => 100,
+					],
+				],
+				'default'   => [
+					'unit' => '%',
+					'size' => 5,
+				],
+				'selectors' => [
+					'{{WRAPPER}} {{CURRENT_ITEM}}.pe_interactive_image__icon' => 'width: {{SIZE}}{{UNIT}};margin-top: calc({{SIZE}}{{UNIT}}/2 * -1);margin-left: calc({{SIZE}}{{UNIT}}/2 * -1);',
+				],
+			],
+		);
+
+		$items_repeater->add_control(
+			'icon_color',
+			[
+				'label'     => '顏色',
+				'type'      => \Elementor\Controls_Manager::COLOR,
+				'default'   => '#d5758d',
+				'selectors' => [
+					'{{WRAPPER}} {{CURRENT_ITEM}}.pe_interactive_image__icon svg' => 'fill: {{VALUE}};',
+				],
+			],
+		);
+
+		$items_repeater->end_controls_tab();
+		// endregion Icon 設定 Tab
+
+		// region 卡片設定 Tab
+		$items_repeater->start_controls_tab(
+			'card_tab',
+			[
+				'label' => '卡片設定',
+			]
+		);
+
 		$items_repeater->add_control(
 			'post_id',
 			[
-				'label'   => '綁定的文章 id',
-				'type'    => \Elementor\Controls_Manager::TEXT,
-				'dynamic' => [
-					'active' => true,
-				],
-				'ai'      => [
+				'label'      => '綁定的文章 id',
+				'type'       => \Elementor\Controls_Manager::TEXT,
+				'input_type' => 'number',
+				'ai'         => [
 					'active' => false,
 				],
 			]
@@ -202,75 +385,42 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		$items_repeater->add_control(
 			'meta_key',
 			[
-				'label' => '額外要顯示的 meta_key',
-                'description' => '可以用逗號 , 隔開多個 meta_key',
-				'type'  => \Elementor\Controls_Manager::TEXT,
-				'ai'    => [
+				'label'       => '額外要顯示的 meta_key',
+				'description' => ControlUtils::get_icon() . ' 可以用逗號 , 隔開多個 meta_key',
+				'type'        => \Elementor\Controls_Manager::TEXT,
+				'ai'          => [
 					'active' => false,
 				],
 			]
 		);
 
 		$items_repeater->add_control(
-			'icon',
+			'description',
 			[
-				'type'        => \Elementor\Controls_Manager::ICONS,
-				'label'       => 'ICON',
-                'description' => '限制 svg',
-				'skin'        => 'inline',
-				'recommended' => [
-					'fa-solid' => [
-						'map-marker-alt',
-					],
+				'label' => '更多自訂內容',
+				'type'  => \Elementor\Controls_Manager::WYSIWYG,
+				'ai'    => [
+					'active' => false,
 				],
-			],
+			]
 		);
 
-		$items_repeater->add_control(
-			'position',
-			[
-				'label'      => '絕對位置(%)',
-				'type'       => \Elementor\Controls_Manager::DIMENSIONS,
-				'size_units' => [ '%' ],
-				'default'    => [
-					'top'      => 0,
-					'right'    => 0,
-					'bottom'   => 0,
-					'left'     => 0,
-					'unit'     => '%',
-					'isLinked' => false,
-				],
-			],
-		);
+		$items_repeater->end_controls_tab();
+		// endregion 卡片設定 Tab
 
-		$items_repeater->add_control(
-			'icon_width',
-			[
-				'label'   => 'icon 寬度尺寸(%)',
-				'type'    => \Elementor\Controls_Manager::NUMBER,
-				'min'     => 0,
-				'max'     => 100,
-				'default' => 5,
-			],
-		);
-
-		$items_repeater->add_control(
-			'icon_color',
-			[
-				'label'   => '顏色',
-				'type'    => \Elementor\Controls_Manager::COLOR,
-				'default' => '#d5758d',
-			],
-		);
+		$items_repeater->end_controls_tabs();
+		// endregion 分頁 Tabs
 
 		$this->add_control(
 			'items',
 			[
-				'label'       => '跳動 Icon',
-				'type'        => \Elementor\Controls_Manager::REPEATER,
-				'fields'      =>$items_repeater->get_controls(),
-				'default'     => [],
-				'title_field' => '{{{title}}}',
+				'label'         => '跳動 Icon',
+				'show_label'    => false,
+				'type'          => \Elementor\Controls_Manager::REPEATER,
+				'fields'        =>$items_repeater->get_controls(),
+				'default'       => [],
+				'prevent_empty' => false,
+				'title_field'   => '{{{title}}}',
 			]
 		);
 
@@ -279,16 +429,21 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		$this->add_control(
 			'is_unique',
 			[
-				'label'   => '隱藏列表中，綁定相同的 post_id 項目',
-				'type'    => \Elementor\Controls_Manager::SWITCHER ,
-				'default' => 'yes',
-		// 'frontend_available' => true,
+				'label'       => '隱藏列表中，綁定相同的 post_id 項目',
+				'description' => ControlUtils::get_icon() . ' 例如有 3 個 icon 都是綁定同一個 post_id 列表中只會出現一個',
+				'type'        => \Elementor\Controls_Manager::SWITCHER ,
+				'default'     => 'yes',
 			]
 		);
 
 		$this->end_controls_section();
 
 		Styles::register_controls($this);
+	}
+
+	/** @return string 取得小工具圖示 */
+	public function get_icon(): string {
+		return 'eicon-image-hotspot';
 	}
 
 	/** @return array 顯示促銷資訊 在小工具面板的下方 */
@@ -305,8 +460,6 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 	protected function render(): void {
 		$settings = $this->get_settings_for_display();
 
-        echo EField::get_styles($settings);
-
 		\printf('<div class="pe_interactive_image" data-is-unique="%1$s">', $settings['is_unique'] ?? 'yes');
 		// region 開始左半邊
 		echo '<div class="pe_interactive_image__left">';
@@ -321,37 +474,21 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 
 		// -- 其他 float 圖片 -- //
 		foreach ($settings['float_images'] as $item) :
-			$image       = $item['image'];
-			$hover_image = $item['hover_image'] ?? [];
-			$image_width = $item['image_width'];
-			$position    = $item['position'];
-
 			\printf(
-			'<img src="%1$s" class="pe_interactive_image__image" style="%2$s %3$s" />
-							<img src="%4$s" class="pe_interactive_image__image--hover" style="%2$s %3$s" />
-							',
-			$image['url'],
-			ControlUtils::get_position_styles_from_dimension($position),
-			ControlUtils::get_styles_from_image_width($image_width),
-				$hover_image['url'] ?? ''
+				'<div class="pe_interactive_image__image %1$s"></div>',
+				ControlUtils::get_current_item_id($item),
 			);
 
 		endforeach;
 
 		// -- 圖標 -- //
 		foreach ($settings['items'] as $item) :
-			\printf(
-				'<div class="pe_interactive_image__icon" style="%s">',
-				ControlUtils::get_position_styles_from_dimension($item['position']) . ControlUtils::get_styles_from_image_width($item['icon_width'])
-			);
+			\printf('<div class="pe_interactive_image__icon %1$s">', ControlUtils::get_current_item_id($item));
 			\Elementor\Icons_Manager::render_icon(
 				$item['icon'],
 				[
 					'aria-hidden' => 'true',
-					'class'       => ' ',
-					'style'       => "color:{$item['icon_color']};fill:{$item['icon_color']};",
-				],
-				'svg'
+				]
 				);
 
 			// region 縮圖卡片
@@ -375,7 +512,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 					);
 			}
 
-			// endregion
+			// endregion 縮圖卡片
 
 			echo '</div>';
 		endforeach;
@@ -415,13 +552,14 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			\printf(
 				'
             <a href="%1$s" target="_blank">
-                <div data-list-item-id="%2$s" class="pe_interactive_image__list_item">
-                    %3$s
+                <div data-list-item-id="%2$s" class="pe_interactive_image__list_item %3$s">
+                    %4$s
                 </div>
             </a>
             ',
 				\esc_url(\get_permalink($bound_post_id)),
 				$is_unique ? $item['post_id'] : $item['_id'],
+				ControlUtils::get_current_item_id($item),
 				$content,
 				);
 
@@ -432,6 +570,10 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		// endregion 結束右半邊
 
 		echo '</div>';
+
+		// echo '<pre>';
+		// var_dump($settings);
+		// echo '</pre>';
 	}
 
 	/**
@@ -477,6 +619,11 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 				$value    = \get_post_meta($bound_post_id, $meta_key, true);
 				$content .= "<p>{$value}</p>";
 			}
+		}
+
+		$description = $item['description'] ?? '';
+		if ($description) {
+			$content .= $description;
 		}
 
 		return $content;
@@ -530,6 +677,37 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			}
 		}
 
+		$description = $item['description'] ?? '';
+		if ($description) {
+			$content .= $description;
+		}
+
 		return $content;
+	}
+
+
+	protected function content_template(): void {
+
+		return;
+
+		?>
+		<#
+		console.log(settings);
+
+		#>
+
+			<# _.each( settings.float_images, function( item, index ) {
+			const ratio       = Number(item?.image_ratio?.size ?? 1);
+			const width       = Number(item?.image_width?.size ?? 10);
+			const unit        = item?.image_width?.unit ?? '%';
+			const height = width * ratio;
+			const left_shift        =  -1 * height/2;
+			const top_shift         =  -1 * width /2;
+
+			#>
+			<div class="jsjs pe_interactive_image__image {{item.id}}" style="height:{{height}}{{unit}};margin-left:{{left_shift}}%;margin-top:{{top_shift}}%;"></div>
+			<# } ); #>
+
+		<?php
 	}
 }

@@ -25,20 +25,8 @@ $(document).ready(function () {
 		$(this).fadeOut()
 	})
 
-	// hover 建築物時，替換為 hover-src
-	$(SELECTOR).on('mouseenter', 'img.pe_interactive_image__image', function () {
-		const $nextHoverImg = $(this).next('img.pe_interactive_image__image--hover')
-		$nextHoverImg.fadeIn()
-	})
 
-	// 滑鼠移出建築物時，替換為 original-src
-	$(SELECTOR).on(
-		'mouseleave',
-		'img.pe_interactive_image__image--hover',
-		function () {
-			$(this).fadeOut()
-		},
-	)
+
 
 	// 點擊 icon 時，顯示卡片
 	$(SELECTOR).on('click', '.pe_interactive_image__icon', function () {
