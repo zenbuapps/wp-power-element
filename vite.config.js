@@ -67,12 +67,17 @@ export default defineConfig({
 			],
 			input: Object.fromEntries(
 				glob
-					.sync('js/src/**/*.{ts,tsx}', { ignore: ['lib/**/*.stories.{ts,tsx}'] })
+					.sync('js/src/**/*.{ts,tsx}', {
+						ignore: ['lib/**/*.stories.{ts,tsx}'],
+					})
 					.map((file) => [
 						// The name of the entry point
 						// lib/nested/foo.ts becomes nested/foo
 
-						relative('js/src', file.slice(0, file.length - extname(file).length)),
+						relative(
+							'js/src',
+							file.slice(0, file.length - extname(file).length),
+						),
 
 						// The absolute path to the entry file
 						// lib/nested/foo.ts becomes /project/lib/nested/foo.ts
@@ -84,29 +89,35 @@ export default defineConfig({
 				format: 'es',
 				entryFileNames: '[name].js',
 				assetFileNames: (assetInfo) => {
-					const ext = path.extname(assetInfo.name);
+					const ext = path.extname(assetInfo.name)
 					// 從引用的模組資訊推斷路徑
-					const originalFileNames = assetInfo.originalFileNames || '';
+					const originalFileNames = assetInfo.originalFileNames || ''
 
-					if('.css' === ext && Array.isArray(originalFileNames) && originalFileNames.length > 0) {
-						const path = originalFileNames[0];
-						const parts = path.split('/');
+					if (
+						'.css' === ext &&
+						Array.isArray(originalFileNames) &&
+						originalFileNames.length > 0
+					) {
+						const path = originalFileNames[0]
+						const parts = path.split('/')
 						// 提取相對於 js/src 的路徑
-						const dir = parts.slice(2, -1).join('/');
+						const dir = parts.slice(2, -1).join('/')
 
-						return `${dir}/index[extname]`;
+						return `${dir}/index[extname]`
 					}
 
-					return '[name][extname]';
+					return '[name][extname]'
 				},
 			},
 		},
 	},
 	plugins: [
-		alias(), react(), tsconfigPaths(),
-
+		alias(),
+		react(),
+		tsconfigPaths(),
 		optimizer({
-			elementorModules: 'const elementorModules = window.elementorModules; export default elementorModules;',
+			elementorModules:
+				'const elementorModules = window.elementorModules; export default elementorModules;',
 			jquery: 'const $ = window.jQuery; export { $ as default }',
 			'@wordpress/element': `
     const wpElement = window.wp.element;

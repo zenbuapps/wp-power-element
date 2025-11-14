@@ -56,7 +56,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		$this->start_controls_section(
 			'content_section',
 			[
-				'label' => \esc_html__('背景設定', 'power_element'),
+				'label' => \esc_html__('Layout 設定', 'power_element'),
 				'tab'   => \Elementor\Controls_Manager::TAB_CONTENT,
 			]
 		);
@@ -67,6 +67,27 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 				'type'        => \Elementor\Controls_Manager::MEDIA,
 				'label'       => '背景圖片',
 				'media_types' => [ 'image' ],
+			]
+		);
+
+		$this->add_control(
+			'background_image_width',
+			[
+				'label'     => '圖片寬度，剩餘部分會分配給列表',
+				'type'      => \Elementor\Controls_Manager::SLIDER,
+				'range'     => [
+					'%' => [
+						'min' => 0,
+						'max' => 100,
+					],
+				],
+				'default'   => [
+					'unit' => '%',
+					'size' => 67,
+				],
+				'selectors' => [
+					'{{WRAPPER}} .pe_interactive_image__left' => 'width: {{SIZE}}{{UNIT}};',
+				],
 			]
 		);
 
@@ -238,17 +259,15 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			]
 		);
 
-		// region 內容類型分頁 Tabs
-
-		$items_repeater->start_controls_tabs(
-			'content_type_tabs'
-		);
-
-		// region Icon 設定 Tab
-		$items_repeater->start_controls_tab(
-			'icon_tab',
+		$items_repeater->add_control(
+			'post_id',
 			[
-				'label' => 'Icon 設定',
+				'label'      => '綁定的文章 id',
+				'type'       => \Elementor\Controls_Manager::TEXT,
+				'input_type' => 'number',
+				'ai'         => [
+					'active' => false,
+				],
 			]
 		);
 
@@ -342,75 +361,6 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			],
 		);
 
-		$items_repeater->end_controls_tab();
-		// endregion Icon 設定 Tab
-
-		// region 卡片設定 Tab
-		$items_repeater->start_controls_tab(
-			'card_tab',
-			[
-				'label' => '卡片設定',
-			]
-		);
-
-		$items_repeater->add_control(
-			'post_id',
-			[
-				'label'      => '綁定的文章 id',
-				'type'       => \Elementor\Controls_Manager::TEXT,
-				'input_type' => 'number',
-				'ai'         => [
-					'active' => false,
-				],
-			]
-		);
-
-		$items_repeater->add_control(
-			'display_items',
-			[
-				'label'       => '要顯示的內容',
-				'type'        => \Elementor\Controls_Manager::SELECT2,
-				'label_block' => true,
-				'multiple'    => true,
-				'options'     => [
-					'featured_image'      => '文章縮圖',
-					'title'               => '文章標題',
-					'excerpt'             => '文章摘要',
-					'author_display_name' => '作者名稱',
-				],
-				'default'     => [ 'featured_image', 'title', 'excerpt', 'author_display_name' ],
-			]
-		);
-
-		$items_repeater->add_control(
-			'meta_key',
-			[
-				'label'       => '額外要顯示的 meta_key',
-				'description' => ControlUtils::get_icon() . ' 可以用逗號 , 隔開多個 meta_key',
-				'type'        => \Elementor\Controls_Manager::TEXT,
-				'ai'          => [
-					'active' => false,
-				],
-			]
-		);
-
-		$items_repeater->add_control(
-			'description',
-			[
-				'label' => '更多自訂內容',
-				'type'  => \Elementor\Controls_Manager::WYSIWYG,
-				'ai'    => [
-					'active' => false,
-				],
-			]
-		);
-
-		$items_repeater->end_controls_tab();
-		// endregion 卡片設定 Tab
-
-		$items_repeater->end_controls_tabs();
-		// endregion 分頁 Tabs
-
 		$this->add_control(
 			'items',
 			[
@@ -424,7 +374,59 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			]
 		);
 
+
+        $this->add_control(
+            'card_display_items',
+            [
+                'label'       => '卡片要顯示的內容',
+                'type'        => \Elementor\Controls_Manager::SELECT2,
+                'label_block' => true,
+                'multiple'    => true,
+                'options'     => [
+                    'featured_image'      => '文章縮圖',
+                    'title'               => '文章標題',
+                    'excerpt'             => '文章摘要',
+                    'author_display_name' => '作者名稱',
+                ],
+                'default'     => [ 'featured_image', 'title', 'excerpt', 'author_display_name' ],
+            ]
+        );
+
+        $this->add_control(
+            'card_meta_key',
+            [
+                'label'       => '額外要顯示的 meta_key',
+                'description' => ControlUtils::get_icon() . ' 可以用逗號 , 隔開多個 meta_key',
+                'type'        => \Elementor\Controls_Manager::TEXT,
+                'ai'          => [
+                    'active' => false,
+                ],
+            ]
+        );
+
+        $this->add_control(
+            'card_content',
+            [
+                'label' => '更多自訂內容',
+                'type'  => \Elementor\Controls_Manager::WYSIWYG,
+                'ai'    => [
+                    'active' => false,
+                ],
+            ]
+        );
+
+		$this->end_controls_section();
 		// endregion
+
+		// region 列表設定
+
+		$this->start_controls_section(
+			'list_items_section',
+			[
+				'label' => \esc_html__('列表設定', 'power_element'),
+				'tab'   => \Elementor\Controls_Manager::TAB_CONTENT,
+			]
+		);
 
 		$this->add_control(
 			'is_unique',
@@ -436,7 +438,48 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			]
 		);
 
+		$this->add_control(
+			'list_item_display_items',
+			[
+				'label'       => '列表要顯示的內容',
+				'type'        => \Elementor\Controls_Manager::SELECT2,
+				'label_block' => true,
+				'multiple'    => true,
+				'options'     => [
+					'featured_image'      => '文章縮圖',
+					'title'               => '文章標題',
+					'excerpt'             => '文章摘要',
+					'author_display_name' => '作者名稱',
+				],
+				'default'     => [ 'featured_image', 'title', 'excerpt', 'author_display_name' ],
+			]
+		);
+
+		$this->add_control(
+			'list_item_meta_key',
+			[
+				'label'       => '額外要顯示的 meta_key',
+				'description' => ControlUtils::get_icon() . ' 可以用逗號 , 隔開多個 meta_key',
+				'type'        => \Elementor\Controls_Manager::TEXT,
+				'ai'          => [
+					'active' => false,
+				],
+			]
+		);
+
+		$this->add_control(
+			'list_item_content',
+			[
+				'label' => '更多自訂內容',
+				'type'  => \Elementor\Controls_Manager::WYSIWYG,
+				'ai'    => [
+					'active' => false,
+				],
+			]
+		);
+
 		$this->end_controls_section();
+		// endregion 列表設定
 
 		Styles::register_controls($this);
 	}
@@ -458,7 +501,9 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 	 * @throws \Exception 當渲染失敗時拋出例外
 	 */
 	protected function render(): void {
-		$settings = $this->get_settings_for_display();
+
+		$settings  = $this->get_settings_for_display();
+		$is_unique = ( $settings['is_unique'] ?? 'yes' ) === 'yes';
 
 		\printf('<div class="pe_interactive_image" data-is-unique="%1$s">', $settings['is_unique'] ?? 'yes');
 		// region 開始左半邊
@@ -482,8 +527,16 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		endforeach;
 
 		// -- 圖標 -- //
-		foreach ($settings['items'] as $item) :
-			\printf('<div class="pe_interactive_image__icon %1$s">', ControlUtils::get_current_item_id($item));
+		$handled_post_ids = [];
+		foreach ($settings['items'] as $index => $item) :
+			$bound_post_id = $item['post_id'] ?? '';
+			\printf(
+				'<div class="pe_interactive_image__icon %1$s" data-card-id="%2$s" data-card-post-id="%3$s">',
+				ControlUtils::get_current_item_id($item),
+				$item['_id'],
+				$bound_post_id
+			);
+
 			\Elementor\Icons_Manager::render_icon(
 				$item['icon'],
 				[
@@ -492,24 +545,27 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 				);
 
 			// region 縮圖卡片
-			$bound_post_id = $item['post_id'] ?? null;
+            $is_preview = \is_admin() && $_GET['action'] === 'elementor';
 
 			if (\is_numeric($bound_post_id)) {
-				$content = self::get_card_content($item, $settings);
+				$render_card = $is_unique ? !\in_array($bound_post_id, $handled_post_ids) : true;
+				if ($render_card) {
+					$content = self::get_card_content($item, $settings);
 
-				\printf(
+					\printf(
 					'
                    <a href="%1$s" target="_blank">
-                        <div data-card-id="%2$s" data-card-post-id="%3$s" class="pe_interactive_image__card">
-                            %4$s
+                        <div class="pe_interactive_image__card" %3$s>
+                            %2$s
                         </div>
                   </a>
                 ',
 					\esc_url(\get_permalink($bound_post_id)),
-					$item['_id'],
-					$item['post_id'],
 					$content,
+                        $is_preview ? 'style="display:block;"' : ''
 					);
+					$handled_post_ids[] = $bound_post_id;
+				}
 			}
 
 			// endregion 縮圖卡片
@@ -524,14 +580,14 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		// endregion  結束左半邊
 
 		// region 開始右半邊
-		echo '<div class="pe_interactive_image__right">';
-		echo '<div class="p-4">';
+		if (100 != $settings['background_image_width']['size']) :
+			echo '<div class="pe_interactive_image__right">';
+			echo '<div class="p-4">';
 
-		$is_unique = ( $settings['is_unique'] ?? 'yes' ) === 'yes';
-		$items     = $settings['items'];
-		if ( $is_unique) {
-			// 移除 items 裡面 item['post_id'] 重複的項目
-			$items = \array_filter(
+			$items = $settings['items'];
+			if ( $is_unique) {
+				// 移除 items 裡面 item['post_id'] 重複的項目
+				$items = \array_filter(
 				$items,
 				function ( $item ) use ( &$seen ) {
 					if (isset($seen[ $item['post_id'] ])) {
@@ -540,16 +596,16 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 					$seen[ $item['post_id'] ] = true;
 					return true;
 				}
-				);
-		}
-
-		foreach ( $items as $item) :
-			$bound_post_id = $item['post_id'] ?? null;
-			if (!\is_numeric($bound_post_id)) {
-				continue;
+					);
 			}
-			$content = self::get_list_content($item, $settings);
-			\printf(
+
+			foreach ( $items as $item) :
+				$bound_post_id = $item['post_id'] ?? null;
+				if (!\is_numeric($bound_post_id)) {
+					continue;
+				}
+				$content = self::get_list_content($item, $settings);
+				\printf(
 				'
             <a href="%1$s" target="_blank">
                 <div data-list-item-id="%2$s" class="pe_interactive_image__list_item %3$s">
@@ -561,12 +617,13 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 				$is_unique ? $item['post_id'] : $item['_id'],
 				ControlUtils::get_current_item_id($item),
 				$content,
-				);
+					);
 
 			endforeach;
 
-		echo '</div>';
-		echo '</div>';
+			echo '</div>';
+			echo '</div>';
+		endif;
 		// endregion 結束右半邊
 
 		echo '</div>';
@@ -587,7 +644,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		if (!\is_numeric($bound_post_id)) {
 			return '';
 		}
-		$display_items           = $item['display_items'] ?? [];
+		$display_items           = $settings['card_display_items'] ?? [];
 		$has_featured_image      = \in_array('featured_image', $display_items, true);
 		$has_title               = \in_array('title', $display_items, true);
 		$has_excerpt             = \in_array('excerpt', $display_items, true);
@@ -612,7 +669,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			$content       .= sprintf('<p>%1$s</p>', $author_name);
 		}
 
-		$meta_key = $item['meta_key'] ?? '';
+		$meta_key = $settings['card_meta_key'] ?? '';
 		if (\is_string($meta_key) && $meta_key) {
 			$meta_keys = self::parse_comma_string($meta_key);
 			foreach ($meta_keys as $meta_key) {
@@ -621,7 +678,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			}
 		}
 
-		$description = $item['description'] ?? '';
+		$description = $settings['card_content'] ?? '';
 		if ($description) {
 			$content .= $description;
 		}
@@ -647,7 +704,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		if (!\is_numeric($bound_post_id)) {
 			return '';
 		}
-		$display_items           = $item['display_items'] ?? [];
+		$display_items           = $settings['list_item_display_items'] ?? [];
 		$has_title               = \in_array('title', $display_items, true);
 		$has_excerpt             = \in_array('excerpt', $display_items, true);
 		$has_author_display_name = \in_array('author_display_name', $display_items, true);
@@ -668,7 +725,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			$content       .= sprintf('<p>%1$s</p>', $author_name);
 		}
 
-		$meta_key = $item['meta_key'] ?? '';
+		$meta_key = $settings['list_item_meta_key'] ?? '';
 		if (\is_string($meta_key) && $meta_key) {
 			$meta_keys = self::parse_comma_string($meta_key);
 			foreach ($meta_keys as $meta_key) {
@@ -677,37 +734,11 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			}
 		}
 
-		$description = $item['description'] ?? '';
+		$description = $settings['list_item_content'] ?? '';
 		if ($description) {
 			$content .= $description;
 		}
 
 		return $content;
-	}
-
-
-	protected function content_template(): void {
-
-		return;
-
-		?>
-		<#
-		console.log(settings);
-
-		#>
-
-			<# _.each( settings.float_images, function( item, index ) {
-			const ratio       = Number(item?.image_ratio?.size ?? 1);
-			const width       = Number(item?.image_width?.size ?? 10);
-			const unit        = item?.image_width?.unit ?? '%';
-			const height = width * ratio;
-			const left_shift        =  -1 * height/2;
-			const top_shift         =  -1 * width /2;
-
-			#>
-			<div class="jsjs pe_interactive_image__image {{item.id}}" style="height:{{height}}{{unit}};margin-left:{{left_shift}}%;margin-top:{{top_shift}}%;"></div>
-			<# } ); #>
-
-		<?php
 	}
 }

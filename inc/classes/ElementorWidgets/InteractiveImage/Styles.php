@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace J7\PowerElement\ElementorWidgets\InteractiveImage;
 
 use J7\PowerElement\ElementorWidgets\InteractiveImage\Shared\Enums\EField;
+use J7\PowerElement\ElementorWidgets\Shared\Utils\ControlUtils;
 
 class Styles {
 
@@ -15,27 +16,133 @@ class Styles {
 	 */
 	public static function register_controls( InteractiveImage $widget ): void {
 
+		self::card_controls_section( $widget );
+		self::icon_controls_section( $widget );
+		self::list_controls_section( $widget );
+	}
+
+	/**
+	 * @param InteractiveImage $widget widget
+	 * @return void
+	 */
+	public static function card_controls_section( InteractiveImage $widget ): void {
+
 		$widget->start_controls_section(
 			'card_style',
 			[
-				'label' => '文字樣式',
+				'label' => '卡片樣式',
 				'tab'   => \Elementor\Controls_Manager::TAB_STYLE,
 			]
 		);
 
+		foreach ( EField::cases() as $field ) {
+			if ($field->is_list()) {
+				continue;
+			}
+            $field->add_control($widget);
+		}
 
+		$widget->end_controls_section();
+	}
 
+	/**
+	 * @param InteractiveImage $widget widget
+	 * @return void
+	 */
+	public static function icon_controls_section( InteractiveImage $widget ): void {
+
+		$widget->start_controls_section(
+			'icon_style',
+			[
+				'label' => 'Icon 樣式',
+				'tab'   => \Elementor\Controls_Manager::TAB_STYLE,
+			]
+		);
+
+		$widget->add_control(
+			'icon_opacity',
+			[
+				'label'     => 'Icon 預設透明度 (hover 時會變不透明)',
+				'type'      => \Elementor\Controls_Manager::SLIDER,
+				'range'     => [
+					'%' => [
+						'min' => 0,
+						'max' => 100,
+					],
+				],
+				'default'   => [
+					'unit' => '%',
+					'size' => 75,
+				],
+				'selectors' => [
+					'{{WRAPPER}} .pe_interactive_image__icon svg' => 'opacity: calc({{SIZE}}/100);',
+				],
+			]
+		);
+
+		$widget->end_controls_section();
+	}
+
+	/**
+	 * @param InteractiveImage $widget widget
+	 * @return void
+	 */
+	public static function list_controls_section( InteractiveImage $widget ): void {
+
+		$widget->start_controls_section(
+			'list_style',
+			[
+				'label' => '列表樣式',
+				'tab'   => \Elementor\Controls_Manager::TAB_STYLE,
+			]
+		);
+
+		$widget->add_responsive_control(
+			'list_item_padding',
+			[
+				'label'      => \esc_html__( 'Padding', 'power_element' ),
+				'type'       => \Elementor\Controls_Manager::DIMENSIONS,
+				'size_units' => [ 'rem', 'px', '%' ],
+				'default'    => [
+					'top'      => 1,
+					'right'    => 1,
+					'bottom'   => 1,
+					'left'     => 1,
+					'unit'     => 'rem',
+					'isLinked' => true,
+				],
+				'selectors'  => [
+					'{{WRAPPER}} .pe_interactive_image__list_item' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+				],
+			]
+		);
+
+		$widget->add_responsive_control(
+			'list_item_margin',
+			[
+				'label'      => \esc_html__( 'Margin', 'power_element' ),
+				'type'       => \Elementor\Controls_Manager::DIMENSIONS,
+				'size_units' => [ 'px', '%', 'rem' ],
+				'default'    => [
+					'top'      => 0,
+					'right'    => 0,
+					'bottom'   => 0.25,
+					'left'     => 0,
+					'unit'     => 'rem',
+					'isLinked' => false,
+				],
+				'selectors'  => [
+					'{{WRAPPER}} .pe_interactive_image__list_item' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+				],
+			]
+		);
 
 		foreach ( EField::cases() as $field ) {
+			if (!$field->is_list()) {
+				continue;
+			}
 
-            $widget->add_group_control(
-                \Elementor\Group_Control_Typography::get_type(),
-                [
-                    'name' => $field->value,
-                    'label'     => $field->label(),
-                    'selector' => $field->selectors(),
-                ]
-            );
+            $field->add_control($widget);
 		}
 
 		$widget->end_controls_section();

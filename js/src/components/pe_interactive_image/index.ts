@@ -10,19 +10,26 @@ $(document).ready(function () {
 	$(SELECTOR).on('mouseenter', 'div[data-list-item-id]', function () {
 		const id = $(this).data('list-item-id')
 		if (isUnique) {
-			$(
-				`div.pe_interactive_image__card:not([data-card-post-id=${id}])`,
-			).fadeOut()
-			$(`div.pe_interactive_image__card[data-card-post-id=${id}]`).fadeIn()
+			$(`div.pe_interactive_image__icon:not([data-card-post-id=${id}])`).removeClass('tw-bounce')
+				.find('.pe_interactive_image__card').fadeOut()
+
+			$(`div.pe_interactive_image__icon[data-card-post-id=${id}]`).addClass('tw-bounce')
+				.find('.pe_interactive_image__card').fadeIn()
 		} else {
-			$(`div.pe_interactive_image__card:not([data-card-id=${id}])`).fadeOut()
-			$(`div.pe_interactive_image__card[data-card-id=${id}]`).fadeIn()
+			$(`div.pe_interactive_image__icon:not([data-card-id=${id}])`).removeClass('tw-bounce')
+				.find('pe_interactive_image__card').fadeOut()
+			$(`div.pe_interactive_image__icon[data-card-id=${id}]`).addClass('tw-bounce')
+				.find('pe_interactive_image__card').fadeIn()
 		}
 	})
 
 	// 滑鼠移出 card div 時隱藏卡片
-	$(SELECTOR).on('mouseleave', 'div[data-card-id]', function () {
+	$(SELECTOR).on('mouseleave', '.pe_interactive_image__card', function () {
 		$(this).fadeOut()
+		const attrName = isUnique ? 'card-post-id' : 'card-id'
+		const id = $(this).closest('.pe_interactive_image__icon').data(attrName)
+
+		$(`div.pe_interactive_image__icon[data-${attrName}=${id}]`).removeClass('tw-bounce')
 	})
 
 
@@ -31,9 +38,12 @@ $(document).ready(function () {
 	// 點擊 icon 時，顯示卡片
 	$(SELECTOR).on('click', '.pe_interactive_image__icon', function () {
 		const card = $(this).find('div.pe_interactive_image__card')
-		const id = card.data('card-id')
-		$(`div.pe_interactive_image__card:not([data-card-id=${id}])`).fadeOut()
+		const id = $(this).data('card-id')
+		$(`div.pe_interactive_image__icon:not([data-card-id=${id}]) .pe_interactive_image__card`).fadeOut()
 		card.fadeIn()
+
+		$('.pe_interactive_image__icon').removeClass('tw-bounce')
+		$(this).addClass('tw-bounce')
 	})
 
 	setListHeight()
@@ -48,4 +58,5 @@ $(document).ready(function () {
 		const imgH = $('img.pe_interactive_image__bg_image').height()
 		$('div.pe_interactive_image__right').height(imgH)
 	}
+
 })
