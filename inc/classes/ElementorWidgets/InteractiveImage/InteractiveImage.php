@@ -374,46 +374,45 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 			]
 		);
 
+		$this->add_control(
+			'card_display_items',
+			[
+				'label'       => '卡片要顯示的內容',
+				'type'        => \Elementor\Controls_Manager::SELECT2,
+				'label_block' => true,
+				'multiple'    => true,
+				'options'     => [
+					'featured_image'      => '文章縮圖',
+					'title'               => '文章標題',
+					'excerpt'             => '文章摘要',
+					'author_display_name' => '作者名稱',
+				],
+				'default'     => [ 'featured_image', 'title', 'excerpt', 'author_display_name' ],
+			]
+		);
 
-        $this->add_control(
-            'card_display_items',
-            [
-                'label'       => '卡片要顯示的內容',
-                'type'        => \Elementor\Controls_Manager::SELECT2,
-                'label_block' => true,
-                'multiple'    => true,
-                'options'     => [
-                    'featured_image'      => '文章縮圖',
-                    'title'               => '文章標題',
-                    'excerpt'             => '文章摘要',
-                    'author_display_name' => '作者名稱',
-                ],
-                'default'     => [ 'featured_image', 'title', 'excerpt', 'author_display_name' ],
-            ]
-        );
+		$this->add_control(
+			'card_meta_key',
+			[
+				'label'       => '額外要顯示的 meta_key',
+				'description' => ControlUtils::get_icon() . ' 可以用逗號 , 隔開多個 meta_key',
+				'type'        => \Elementor\Controls_Manager::TEXT,
+				'ai'          => [
+					'active' => false,
+				],
+			]
+		);
 
-        $this->add_control(
-            'card_meta_key',
-            [
-                'label'       => '額外要顯示的 meta_key',
-                'description' => ControlUtils::get_icon() . ' 可以用逗號 , 隔開多個 meta_key',
-                'type'        => \Elementor\Controls_Manager::TEXT,
-                'ai'          => [
-                    'active' => false,
-                ],
-            ]
-        );
-
-        $this->add_control(
-            'card_content',
-            [
-                'label' => '更多自訂內容',
-                'type'  => \Elementor\Controls_Manager::WYSIWYG,
-                'ai'    => [
-                    'active' => false,
-                ],
-            ]
-        );
+		$this->add_control(
+			'card_content',
+			[
+				'label' => '更多自訂內容',
+				'type'  => \Elementor\Controls_Manager::WYSIWYG,
+				'ai'    => [
+					'active' => false,
+				],
+			]
+		);
 
 		$this->end_controls_section();
 		// endregion
@@ -523,11 +522,9 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 				'<div class="pe_interactive_image__image %1$s"></div>',
 				ControlUtils::get_current_item_id($item),
 			);
-
 		endforeach;
 
 		// -- 圖標 -- //
-		$handled_post_ids = [];
 		foreach ($settings['items'] as $index => $item) :
 			$bound_post_id = $item['post_id'] ?? '';
 			\printf(
@@ -543,35 +540,51 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 					'aria-hidden' => 'true',
 				]
 				);
+			echo '</div>';
+		endforeach;
 
-			// region 縮圖卡片
-            $is_preview = \is_admin() && $_GET['action'] === 'elementor';
+		// region 縮圖卡片
+		$handled_post_ids = [];
+		foreach ($settings['items'] as $index => $item) :
+			$bound_post_id = $item['post_id'] ?? '';
+
+			$is_preview = \is_admin() && $_GET['action'] === 'elementor';
 
 			if (\is_numeric($bound_post_id)) {
 				$render_card = $is_unique ? !\in_array($bound_post_id, $handled_post_ids) : true;
-				if ($render_card) {
-					$content = self::get_card_content($item, $settings);
 
-					\printf(
-					'
+				if (!$render_card) {
+					continue;
+				}
+				$content                 = self::get_card_content($item, $settings);
+				[$calc_top, $calc_left ] = self::calc_top_left($item, $settings);
+				$position_css            = "left:{$calc_left}%;top:calc({$calc_top}% - 1rem);";
+				if (!$is_unique) {
+					$icon_top     = $item['position_top']['size'] ?? 0;
+					$icon_width   = $item['icon_width']['size'] ?? 5;
+					$calc_top     = $icon_top - $icon_width;
+					$calc_left    = $item['position_left']['size'] ?? 0;
+					$position_css = "left:{$calc_left}%;top:calc({$calc_top}% - 1rem);";
+				}
+
+				\printf(
+						'
                    <a href="%1$s" target="_blank">
-                        <div class="pe_interactive_image__card" %3$s>
-                            %2$s
+                        <div class="pe_interactive_image__card" style="%2$s" data-card-id="%3$s" data-card-post-id="%4$s">
+                            %5$s
                         </div>
                   </a>
                 ',
-					\esc_url(\get_permalink($bound_post_id)),
-					$content,
-                        $is_preview ? 'style="display:block;"' : ''
+						\esc_url(\get_permalink($bound_post_id)),
+						$is_preview ? "display:block;{$position_css}" : $position_css,
+						$item['_id'],
+						$bound_post_id,
+						$content,
 					);
-					$handled_post_ids[] = $bound_post_id;
-				}
+				$handled_post_ids[] = $bound_post_id;
 			}
-
-			// endregion 縮圖卡片
-
-			echo '</div>';
 		endforeach;
+		// endregion 縮圖卡片
 
 		echo '</div>';
 		// endregion 結束 background_image -- //
@@ -636,7 +649,8 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 	/**
 	 * 取得動態內容
 	 *
-	 * @param array $item
+	 * @param array $item icon 項目
+	 * @param array $settings 設定
 	 * @return string
 	 */
 	private static function get_card_content( array $item, array $settings ): string {
@@ -691,6 +705,49 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		$arr = \array_map('trim', $arr);
 		$arr = \array_filter($arr);
 		return $arr;
+	}
+
+	/**
+	 * 取得動態內容
+	 *
+	 * @param array $item icon 項目
+	 * @param array $settings 設定
+	 * @return array [top, left]
+	 */
+	private static function calc_top_left( array $item, array $settings ): array {
+		$is_unique  = ( $settings['is_unique'] ?? 'yes' ) === 'yes';
+		$icon_width = $item['icon_width']['size'] ?? 5;
+
+		if ($is_unique) {
+			$items = $settings['items'];
+
+			$sum_left = 0;
+			$min_top  = 100;
+            $count = 0;
+			foreach ($items as $i) {
+				if ($item['post_id'] != $i['post_id']) {
+					continue;
+				}
+				$icon_left = $i['position_left']['size'] ?? 0;
+				$sum_left += $icon_left;
+				$icon_top  = $i['position_top']['size'] ?? 0;
+				if ($icon_top < $min_top) {
+					$min_top = $icon_top;
+				}
+                $count++;
+			}
+
+			$calc_top  = $min_top - $icon_width;
+			$calc_left = ( $sum_left / $count );
+			return [ $calc_top, $calc_left ];
+		}
+
+		$icon_top = $item['position_top']['size'] ?? 0;
+
+		$calc_top  = $icon_top - $icon_width;
+		$calc_left = $item['position_left']['size'] ?? 0;
+
+		return [ $calc_top, $calc_left ];
 	}
 
 	/**
