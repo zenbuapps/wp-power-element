@@ -56,7 +56,7 @@ $(document).ready(function () {
 	// 將列表高度與圖片等高，超過就顯示 scroll
 	function setListHeight() {
 		const imgH = $('img.pe_interactive_image__bg_image').height()
-		$('div.pe_interactive_image__right').height(imgH)
+		$('div.pe_interactive_image__right').css('max-height', `${imgH}px`)
 	}
 
 })

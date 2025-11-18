@@ -16,12 +16,98 @@ class Styles {
 	 */
 	public static function register_controls( InteractiveImage $widget ): void {
 
+		self::layout_controls_section( $widget );
 		self::card_controls_section( $widget );
 		self::icon_controls_section( $widget );
 		self::list_controls_section( $widget );
 	}
 
-	/**
+    /**
+     * @param InteractiveImage $widget widget
+     * @return void
+     */
+    public static function layout_controls_section( InteractiveImage $widget ): void {
+
+        $widget->start_controls_section(
+            'layout_style',
+            [
+                'label' => 'Layout 樣式',
+                'tab'   => \Elementor\Controls_Manager::TAB_STYLE,
+            ]
+        );
+
+        $widget->add_responsive_control(
+            'bg_image_width',
+            [
+                'type' => \Elementor\Controls_Manager::SLIDER,
+                'label' => '背景圖片寬度',
+                'size_units' => [ 'px', '%' ],
+                'range' => [
+                    'px' => [
+                        'min' => 0,
+                        'max' => 2000,
+                    ],
+                    '%' => [
+                        'min' => 0,
+                        'max' => 100,
+                    ],
+                ],
+                'default' => [
+                    'size' => 100,
+                    'unit' => '%',
+                ],
+                'tablet_default' => [
+                    'size' => 100,
+                    'unit' => '%',
+                ],
+                'mobile_default' => [
+                    'size' => 100,
+                    'unit' => '%',
+                ],
+                'selectors' => [
+                    '{{WRAPPER}} .pe_interactive_image__bg_image' => 'width: {{SIZE}}{{UNIT}};',
+                ],
+            ]
+        );
+
+        $widget->add_responsive_control(
+            'segment_gap',
+            [
+                'type' => \Elementor\Controls_Manager::SLIDER,
+                'label' => '圖片與列表的間距',
+                'size_units' => [ 'px', 'rem' ],
+                'range' => [
+                    'rem' => [
+                        'min' => 0,
+                        'max' => 10,
+                    ],
+                    'px' => [
+                        'min' => 0,
+                        'max' => 160,
+                    ],
+                ],
+                'default' => [
+                    'size' => 0,
+                    'unit' => 'rem',
+                ],
+                'tablet_default' => [
+                    'size' => 0,
+                    'unit' => 'rem',
+                ],
+                'mobile_default' => [
+                    'size' => 0,
+                    'unit' => 'rem',
+                ],
+                'selectors' => [
+                    '{{WRAPPER}} .pe_interactive_image' => 'gap: {{SIZE}}{{UNIT}};',
+                ],
+            ]);
+
+        $widget->end_controls_section();
+    }
+
+
+    /**
 	 * @param InteractiveImage $widget widget
 	 * @return void
 	 */

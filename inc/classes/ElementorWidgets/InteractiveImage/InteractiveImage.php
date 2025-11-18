@@ -513,7 +513,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 		echo '<div class="relative">';
 
 		\printf(
-			'<img class="pe_interactive_image__bg_image w-full" src="%1$s">',
+			'<img class="pe_interactive_image__bg_image" src="%1$s">',
 			$settings['background_image']['url']
 		);
 

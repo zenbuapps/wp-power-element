@@ -1,16 +1,22 @@
 .pe_interactive_image {
   display: flex;
   flex-direction: column;
-  @media (min-width: 1080px) {
+  @media (min-width: 1025px) {
     flex-direction: row;
   }
 
   // region left side
 
   &__left {
-    @media (max-width: 1079px) {
+    @media (max-width: 1024px) {
       width: 100% !important;
+      overflow-x: auto;
     }
+  }
+
+  &__bg_image {
+    width: 100%;
+    max-width: unset !important;
   }
 
   &__image {
@@ -86,7 +92,7 @@
 
   &__right {
     flex: 1;
-    @media (max-width: 1079px) {
+    @media (max-width: 1024px) {
       width: 100% !important;
     }
     --tw-bg-opacity: 1;
@@ -143,6 +149,7 @@
 
   .relative {
     position: relative;
+    width: fit-content;
   }
 
   .w-full {
