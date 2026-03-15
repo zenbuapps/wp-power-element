@@ -34,6 +34,13 @@ $(document).ready(function () {
 		$(`div.pe_interactive_image__icon`).removeClass('tw-bounce')
 	})
 
+	// 滑鼠移入圖片時添加 hover class
+	$(SELECTOR).on('pointerover', '.pe_interactive_image__image', function () {
+		$(this).addClass('hover')
+	})
+	$(SELECTOR).on('pointerout', '.pe_interactive_image__image', function () {
+		$(this).removeClass('hover')
+	})
 
 
 
