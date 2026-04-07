@@ -1,5 +1,5 @@
 {
-	"name": "j7-dev/power-element",
+	"name": "p9-cloud/power-element",
 	"description": "This is a boilerplate for creating a WordPress plugin with vite",
 	"type": "wordpress-plugin",
 	"license": "GPL-2.0-only",
