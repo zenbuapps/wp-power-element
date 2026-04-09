@@ -40,7 +40,7 @@ final class InteractiveImage extends \Elementor\Widget_Base {
 	 * @see https://developers.elementor.com/docs/widgets/widget-promotions/#widget-promotion
 	 */
 	public function get_custom_help_url(): string {
-		return 'https://github.com/p9-cloud/wp-power-element';
+		return 'https://github.com/zenbuapps/wp-power-element';
 	}
 
 	public function get_script_depends(): array {

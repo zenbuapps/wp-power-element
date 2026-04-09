@@ -1,13 +1,13 @@
 <?php
 /**
  * Plugin Name:       Power Element | 一些自製的 Shortcode, Elementor Widget
- * Plugin URI:        https://github.com/p9-cloud/wp-power-element
+ * Plugin URI:        https://github.com/zenbuapps/wp-power-element
  * Description:       一些自製的 Shortcode, Elementor Widget
  * Version:           0.0.9
  * Requires at least: 5.7
  * Requires PHP:      8.1
  * Author:            J7
- * Author URI:        https://github.com/p9-cloud/wp-power-element
+ * Author URI:        https://github.com/zenbuapps/wp-power-element
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       power_element
@@ -54,7 +54,7 @@ final class Plugin {
 		$this->init(
 			[
 				'app_name'    => 'Power Element',
-				'github_repo' => 'https://github.com/p9-cloud/wp-power-element',
+				'github_repo' => 'https://github.com/zenbuapps/wp-power-element',
 				'callback'    => [ Bootstrap::class, 'instance' ],
                 'lc' => 'ZmFsc2'
 			]
