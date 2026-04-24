@@ -966,27 +966,30 @@ jobs:
       - name: 套用 LC Bypass（跳過外掛授權驗證）
         if: steps.detect_smoke.outputs.needed == 'true'
         run: |
-          node -e "
-            const fs = require('fs');
-            const CAPABILITY_LINE = \"'capability'  => 'manage_woocommerce',\";
-            const LC_LINE = \"\t\t\t\t\t'lc'          => false,\";
-            const content = fs.readFileSync('plugin.php', 'utf-8');
-            if (!content.includes(\"'lc'\")) {
-              const modified = content.replace(CAPABILITY_LINE, CAPABILITY_LINE + '\n' + LC_LINE);
-              if (modified !== content) {
-                fs.writeFileSync('plugin.php', modified);
-                console.log('✅ LC bypass applied to plugin.php');
-              } else {
-                console.warn('⚠️ capability line not found in plugin.php, skipping LC bypass');
-              }
+          node <<'SCRIPT'
+          const fs = require('fs');
+          const content = fs.readFileSync('plugin.php', 'utf-8');
+          // 冪等檢查：若已為 false，代表 bypass 早已套用
+          if (/'lc'\s*=>\s*false/.test(content)) {
+            console.log('ℹ️ LC bypass already applied');
+          } else {
+            // 把 'lc' 的值（string / true / false）統一改成 false
+            const modified = content.replace(
+              /('lc'\s*=>\s*)(['"][^'"]*['"]|true|false)(\s*,?)/,
+              "$1false$3"
+            );
+            if (modified !== content) {
+              fs.writeFileSync('plugin.php', modified);
+              console.log('✅ LC bypass applied to plugin.php');
             } else {
-              console.log('ℹ️ LC bypass already applied');
+              console.warn("⚠️ 'lc' config not found in plugin.php, skipping LC bypass");
             }
-            const p = JSON.parse(fs.readFileSync('.e2e-progress.json', 'utf-8'));
-            p.lc_bypass_applied = true;
-            fs.writeFileSync('.e2e-progress.json', JSON.stringify(p, null, '\t'));
-            console.log('✅ .e2e-progress.json: lc_bypass_applied = true');
-          "
+          }
+          const p = JSON.parse(fs.readFileSync('.e2e-progress.json', 'utf-8'));
+          p.lc_bypass_applied = true;
+          fs.writeFileSync('.e2e-progress.json', JSON.stringify(p, null, '\t'));
+          console.log('✅ .e2e-progress.json: lc_bypass_applied = true');
+          SCRIPT
 
       - name: 建置前端（AI 驗收用）
         if: steps.detect_smoke.outputs.needed == 'true'
