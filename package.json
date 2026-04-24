@@ -1,6 +1,7 @@
 {
 	"name": "wp-power-element",
 	"version": "0.0.10",
+	"packageManager": "pnpm@10.32.0",
 	"type": "module",
 	"scripts": {
 		"bootstrap": "pnpm install && composer install --no-interaction",
@@ -19,9 +20,14 @@
 		"zip": "env-cmd -f ./.env node ./release/zip.cjs",
 		"create:release": "env-cmd -f ./.env node ./release/create-release.cjs",
 		"sync:version": "wp-update-project-version -s package.json -p plugin.php",
-		"replace-string": "node ./replace-string.cjs"
+		"replace-string": "node ./replace-string.cjs",
+		"env:start": "npx wp-env start",
+		"env:stop": "npx wp-env stop",
+		"env:destroy": "npx wp-env destroy",
+		"test:phpunit": "npx wp-env run tests-cli --env-cwd=wp-content/plugins/power-element composer run test"
 	},
 	"devDependencies": {
+		"@wordpress/env": "^11.1.0",
 		"@release-it/bumper": "^7.0.5",
 		"@rollup/plugin-alias": "^5.0.0",
 		"@soderlind/wp-project-version-sync": "^2.0.2",

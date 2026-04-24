@@ -1,0 +1,14 @@
+{
+	"core": "WordPress/WordPress#6.8",
+	"phpVersion": "8.2",
+	"plugins": [
+		"https://downloads.wordpress.org/plugin/woocommerce.zip",
+		"https://github.com/zenbuapps/wp-powerhouse/releases/latest/download/powerhouse.zip",
+		"."
+	],
+	"themes": [],
+	"config": {
+		"WP_DEBUG": false,
+		"WP_ENVIRONMENT_TYPE": "local"
+	}
+}
