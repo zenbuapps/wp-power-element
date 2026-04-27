@@ -9,8 +9,12 @@ on:
     types: [submitted]
 
 concurrency:
-  group: claude-pipe-${{ github.event.issue.number || github.event.pull_request.number }}-${{ github.event.sender.type }}
+  group: claude-pipe-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}-${{ github.event.sender.type == 'Bot' && github.run_id || 'human' }}
   cancel-in-progress: true
+
+# 全域變數：統一管理 Claude 模型版本，避免散落在各 step 寫死
+env:
+  CLAUDE_MODEL: opus
 
 jobs:
   claude:
@@ -43,6 +47,9 @@ jobs:
       has_changes: ${{ steps.check_result.outputs.has_changes }}
       agent_name: ${{ steps.check_result.outputs.agent_name }}
       pipeline_mode: ${{ steps.check_result.outputs.pipeline_mode }}
+      full_auto_mode: ${{ steps.check_result.outputs.full_auto_mode }}
+      pr_mode: ${{ steps.check_result.outputs.pr_mode }}
+      run_integration_tests: ${{ steps.check_result.outputs.run_integration_tests }}
     steps:
       - name: 👀 對觸發留言加上 eyes reaction
         if: github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment'
@@ -74,10 +81,8 @@ jobs:
           ISSUE_URL: ${{ github.event.comment.issue_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # 取得 issue number
-          if [ "$EVENT_NAME" = "issues" ]; then
-            ISSUE_NUM="$ISSUE_NUMBER"
-          elif [ "$EVENT_NAME" = "issue_comment" ]; then
+          # workflow 只訂閱 issue_comment / pull_request_review_comment / pull_request_review
+          if [ "$EVENT_NAME" = "issue_comment" ]; then
             ISSUE_NUM=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$' || echo "")
             if [ -z "$ISSUE_NUM" ]; then
               ISSUE_NUM="$ISSUE_NUMBER"
@@ -95,21 +100,28 @@ jobs:
             exit 0
           fi
 
-          # 尋找最新的 claude/issue-{N}-* 分支
-          git fetch origin 'refs/heads/claude/*:refs/remotes/origin/claude/*' 2>/dev/null || true
-          EXISTING_BRANCH=$(git branch -r --list "origin/claude/issue-${ISSUE_NUM}-*" \
-            --sort=-committerdate | head -1 | tr -d ' ')
+          # 尋找已存在的分支（優先 issue/{N}，fallback claude/issue-{N}-*）
+          EXISTING_BRANCH=$(git branch -r --list "origin/issue/${ISSUE_NUM}" | tr -d ' ')
+
+          # Fallback: 搜尋舊命名格式 claude/issue-{N}-*（取最新的一個）
+          if [ -z "$EXISTING_BRANCH" ]; then
+            EXISTING_BRANCH=$(git branch -r --list "origin/claude/issue-${ISSUE_NUM}-*" | tr -d ' ' | sort -r | head -1)
+            if [ -n "$EXISTING_BRANCH" ]; then
+              echo "🔄 找到舊格式分支: $EXISTING_BRANCH（將沿用）"
+            fi
+          fi
 
           if [ -n "$EXISTING_BRANCH" ]; then
-            LOCAL_BRANCH=$(echo "$EXISTING_BRANCH" | sed 's|origin/||')
-            echo "✅ 找到已存在的分支: $LOCAL_BRANCH"
+            # 使用遠端分支的實際名稱（去掉 origin/ 前綴）
+            LOCAL_BRANCH="${EXISTING_BRANCH#origin/}"
+            echo "✅ 切換到已存在的分支: $LOCAL_BRANCH"
             git checkout -b "$LOCAL_BRANCH" "$EXISTING_BRANCH"
             echo "branch_switched=true" >> $GITHUB_OUTPUT
             echo "branch_name=$LOCAL_BRANCH" >> $GITHUB_OUTPUT
           else
             echo "ℹ️ 無已存在的 issue 分支，建立新分支"
 
-            NEW_BRANCH="claude/issue-${ISSUE_NUM}-$(date +%Y%m%d-%H%M%S)"
+            NEW_BRANCH="issue/${ISSUE_NUM}"
             echo "🌿 建立新分支: $NEW_BRANCH"
             git checkout -b "$NEW_BRANCH"
             echo "branch_switched=true" >> $GITHUB_OUTPUT
@@ -129,12 +141,11 @@ jobs:
         id: parse_agent
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
           REVIEW_BODY: ${{ github.event.review.body }}
         run: |
-          if [ "${{ github.event_name }}" = "issues" ]; then
-            COMMENT="$ISSUE_BODY"
-          elif [ "${{ github.event_name }}" = "pull_request_review" ]; then
+          # workflow 只訂閱 issue_comment / pull_request_review_comment / pull_request_review
+          # 前兩者都以 github.event.comment.body 取得內文，review 走 review.body
+          if [ "${{ github.event_name }}" = "pull_request_review" ]; then
             COMMENT="$REVIEW_BODY"
           else
             COMMENT="$COMMENT_BODY"
@@ -143,17 +154,34 @@ jobs:
           # 擷取 @claude 後面的文字來比對關鍵字
           AFTER_CLAUDE=$(echo "$COMMENT" | sed -n 's/.*@claude[[:space:]]*//p' | head -1 || echo "")
 
-          # 全流程管線模式（最高優先）— 釐清完畢後由用戶觸發
-          if echo "$AFTER_CLAUDE" | grep -qiE '開工|全自動|確認|OK|沒問題|開始|go|start'; then
+          # 模式解析（優先序：全自動 > PR > 開工 > 互動）
+          # - full_auto: 全自動 → clarifier + planner + tdd + 整合測試 + AI 驗收
+          # - pr_only:   PR     → 跳過 claude 實作階段，直接跑整合測試 + AI 驗收（於現有分支）
+          # - implement: 開工等 → clarifier + planner + tdd（不觸發整合測試，由用戶手動 @claude PR）
+          # - interactive: 其他 → 僅 clarifier（澄清需求）
+          FULL_AUTO_MODE="false"
+          PR_MODE="false"
+          PIPELINE_MODE="false"
+
+          if echo "$AFTER_CLAUDE" | grep -qiE '全自動'; then
+            FULL_AUTO_MODE="true"
             PIPELINE_MODE="true"
-          else
-            PIPELINE_MODE="false"
+          elif echo "$AFTER_CLAUDE" | grep -qiE '(^|[^[:alnum:]])PR([^[:alnum:]]|$)'; then
+            PR_MODE="true"
+          elif echo "$AFTER_CLAUDE" | grep -qiE '開工|確認|沒問題|開始|(^|[^[:alnum:]])(OK|go|start)([^[:alnum:]]|$)'; then
+            PIPELINE_MODE="true"
           fi
 
+          echo "FULL_AUTO_MODE=$FULL_AUTO_MODE" >> $GITHUB_ENV
+          echo "PR_MODE=$PR_MODE" >> $GITHUB_ENV
           echo "PIPELINE_MODE=$PIPELINE_MODE" >> $GITHUB_ENV
 
-          if [ "$PIPELINE_MODE" = "true" ]; then
-            echo "🚀 全流程管線模式啟動 (clarifier → tdd-coordinator)"
+          if [ "$FULL_AUTO_MODE" = "true" ]; then
+            echo "🤖 全自動模式啟動 (clarifier → tdd-coordinator → 整合測試 + AI 驗收)"
+          elif [ "$PR_MODE" = "true" ]; then
+            echo "🧪 PR 模式啟動（僅執行整合測試 + AI 驗收，於現有分支）"
+          elif [ "$PIPELINE_MODE" = "true" ]; then
+            echo "🚀 開工模式啟動 (clarifier → tdd-coordinator，完成後需手動 @claude PR 觸發測試)"
           else
             echo "💬 互動澄清模式 (clarifier only)"
           fi
@@ -184,6 +212,7 @@ jobs:
           fi
 
       - name: 組合 Clarifier Prompt
+        if: env.PR_MODE != 'true'
         run: |
           ISSUE_NUM="${{ steps.resolve_branch.outputs.issue_num }}"
           if [ "$PIPELINE_MODE" = "true" ]; then
@@ -206,12 +235,13 @@ jobs:
 
       - name: "Stage 1: Clarifier"
         id: clarifier
+        if: env.PR_MODE != 'true'
         uses: ./.github/actions/claude-retry
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ env.CLARIFIER_PROMPT }}
           max_turns: ${{ env.PIPELINE_MODE == 'true' && '200' || '120' }}
-          agent: wp-workflows:clarifier
+          agent: zenbu-powers:clarifier
 
       # ══════════════════════════════════════════════════
       # Stage 1→2 橋接：偵測 Specs 變更
@@ -219,9 +249,39 @@ jobs:
 
       - name: 偵測 Specs 變更
         id: detect_specs
+        if: env.PR_MODE != 'true'
+        env:
+          ISSUE_NUM: ${{ steps.resolve_branch.outputs.issue_num }}
         run: |
           # Clarifier 是否成功（由 composite action 彙整）
           CLARIFIER_OK="${{ steps.clarifier.outputs.success }}"
+
+          # 檢查 1（獨立）：specs/ 目錄是否有可用的規格檔案（跨 run 累積）
+          # 此 global 檢查供 Planner/TDD 等下游 step 判斷是否有 specs 可讀取
+          SPECS_FILES=$(find specs/ -name '*.feature' -o -name '*.activity' -o -name 'api.yml' -o -name 'erm.dbml' 2>/dev/null | head -1)
+          if [ -n "$SPECS_FILES" ]; then
+            echo "specs_available=true" >> $GITHUB_OUTPUT
+            echo "📦 specs 目錄有可用規格檔案"
+          else
+            echo "specs_available=false" >> $GITHUB_OUTPUT
+            echo "📦 specs 目錄無可用規格檔案"
+          fi
+
+          # 檢查 1b（issue-scoped）：specs/ 下是否有「此 issue」的規格產出
+          ISSUE_SPECS=""
+          if [ -n "$ISSUE_NUM" ]; then
+            ISSUE_SPECS=$(find specs/open-issue/ -name "issue-${ISSUE_NUM}-*" 2>/dev/null | head -1)
+            if [ -z "$ISSUE_SPECS" ]; then
+              ISSUE_SPECS=$(find specs/clarify/ -name "*issue-${ISSUE_NUM}*" 2>/dev/null | head -1)
+            fi
+          fi
+          if [ -n "$ISSUE_SPECS" ]; then
+            echo "issue_specs_available=true" >> $GITHUB_OUTPUT
+            echo "📦 找到此 issue (#${ISSUE_NUM}) 的既有規格：$ISSUE_SPECS"
+          else
+            echo "issue_specs_available=false" >> $GITHUB_OUTPUT
+            echo "📦 無此 issue (#${ISSUE_NUM}) 的既有規格"
+          fi
 
           if [ "$CLARIFIER_OK" != "true" ]; then
             echo "specs_changed=false" >> $GITHUB_OUTPUT
@@ -232,14 +292,14 @@ jobs:
           INITIAL_SHA="${{ steps.save_sha.outputs.initial_sha }}"
           CURRENT_SHA=$(git rev-parse HEAD)
 
-          # 檢查 1：是否有任何 commit
+          # 檢查 2：是否有任何 commit
           if [ "$CURRENT_SHA" = "$INITIAL_SHA" ]; then
             echo "specs_changed=false" >> $GITHUB_OUTPUT
             echo "ℹ️ 無任何 commit，clarifier 可能只是提問"
             exit 0
           fi
 
-          # 檢查 2：specs/ 目錄是否有新增或修改
+          # 檢查 3：specs/ 目錄是否有新增或修改
           SPECS_DIFF=$(git diff --name-only "$INITIAL_SHA" HEAD -- 'specs/' || echo "")
           SPECS_UNTRACKED=$(git ls-files --others --exclude-standard -- 'specs/' || echo "")
 
@@ -257,25 +317,25 @@ jobs:
             echo "ℹ️ 無 specs 變更（clarifier 可能只是提問或修改其他檔案）"
           fi
 
-          # 檢查 3：specs/ 目錄是否有可用的規格檔案（跨 run 累積）
-          SPECS_FILES=$(find specs/ -name '*.feature' -o -name '*.activity' -o -name 'api.yml' -o -name 'erm.dbml' 2>/dev/null | head -1)
-          if [ -n "$SPECS_FILES" ]; then
-            echo "specs_available=true" >> $GITHUB_OUTPUT
-            echo "📦 specs 目錄有可用規格檔案"
-          else
-            echo "specs_available=false" >> $GITHUB_OUTPUT
-            echo "📦 specs 目錄無可用規格檔案"
-          fi
-
       # ══════════════════════════════════════════════════
       # Stage 1→2 橋接：動態升級管線模式
       # ══════════════════════════════════════════════════
 
-      - name: 動態升級為管線模式（clarifier 已完成規格生成）
+      - name: 動態升級為管線模式（clarifier 已完成規格生成，或此 issue 有既有 specs）
         id: dynamic_upgrade
-        if: env.PIPELINE_MODE == 'false' && steps.detect_specs.outputs.specs_changed == 'true'
+        if: |
+          env.PR_MODE != 'true' &&
+          env.PIPELINE_MODE == 'false' &&
+          (
+            steps.detect_specs.outputs.specs_changed == 'true' ||
+            steps.detect_specs.outputs.issue_specs_available == 'true'
+          )
         run: |
-          echo "🔄 Clarifier 已生成 specs，動態升級為管線模式"
+          if [ "${{ steps.detect_specs.outputs.specs_changed }}" = "true" ]; then
+            echo "🔄 Clarifier 已生成 specs，動態升級為管線模式"
+          else
+            echo "🔄 偵測到此 issue 的既有 specs（來自先前 run），動態升級為管線模式"
+          fi
           echo "PIPELINE_MODE=true" >> $GITHUB_ENV
           echo "upgraded=true" >> $GITHUB_OUTPUT
 
@@ -296,7 +356,7 @@ jobs:
       # ══════════════════════════════════════════════════
 
       - name: 組合 Planner Prompt
-        if: steps.detect_specs.outputs.specs_available == 'true' && env.PIPELINE_MODE == 'true'
+        if: env.PR_MODE != 'true' && steps.detect_specs.outputs.specs_available == 'true' && env.PIPELINE_MODE == 'true'
         run: |
           ISSUE_NUM="${{ steps.resolve_branch.outputs.issue_num }}"
           {
@@ -310,13 +370,13 @@ jobs:
 
       - name: "Stage 2: Planner"
         id: planner
-        if: steps.detect_specs.outputs.specs_available == 'true' && env.PIPELINE_MODE == 'true'
+        if: env.PR_MODE != 'true' && steps.detect_specs.outputs.specs_available == 'true' && env.PIPELINE_MODE == 'true'
         uses: ./.github/actions/claude-retry
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ env.PLANNER_PROMPT }}
           max_turns: '120'
-          agent: wp-workflows:planner
+          agent: zenbu-powers:planner
 
       # ══════════════════════════════════════════════════
       # Stage 2→3 橋接：偵測 Planner 結果
@@ -324,7 +384,7 @@ jobs:
 
       - name: 偵測 Planner 結果
         id: detect_planner
-        if: steps.detect_specs.outputs.specs_available == 'true' && env.PIPELINE_MODE == 'true'
+        if: env.PR_MODE != 'true' && steps.detect_specs.outputs.specs_available == 'true' && env.PIPELINE_MODE == 'true'
         run: |
           echo "planner_ok=${{ steps.planner.outputs.success }}" >> $GITHUB_OUTPUT
           echo "📋 Planner 結果: ${{ steps.planner.outputs.success }}"
@@ -334,7 +394,7 @@ jobs:
       # ══════════════════════════════════════════════════
 
       - name: 組合 tdd-coordinator Prompt
-        if: steps.detect_planner.outputs.planner_ok == 'true'
+        if: env.PR_MODE != 'true' && steps.detect_planner.outputs.planner_ok == 'true'
         run: |
           ISSUE_NUM="${{ steps.resolve_branch.outputs.issue_num }}"
           {
@@ -348,13 +408,13 @@ jobs:
 
       - name: "Stage 3: TDD Coordinator"
         id: tdd
-        if: steps.detect_planner.outputs.planner_ok == 'true'
+        if: env.PR_MODE != 'true' && steps.detect_planner.outputs.planner_ok == 'true'
         uses: ./.github/actions/claude-retry
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ env.TDD_PROMPT }}
           max_turns: '200'
-          agent: wp-workflows:tdd-coordinator
+          agent: zenbu-powers:tdd-coordinator
 
       # ══════════════════════════════════════════════════
       # 檢查整體結果
@@ -405,15 +465,33 @@ jobs:
           fi
 
           # Pipeline mode 輸出（供下游 job 判斷是否該跑測試）
+          FULL_AUTO_MODE="${{ env.FULL_AUTO_MODE }}"
+          PR_MODE="${{ env.PR_MODE }}"
           echo "pipeline_mode=$PIPELINE_MODE" >> $GITHUB_OUTPUT
-          if [ "$PIPELINE_MODE" = "true" ]; then
-            echo "🚀 Pipeline mode: 下游測試 job 可啟動"
+          echo "full_auto_mode=$FULL_AUTO_MODE" >> $GITHUB_OUTPUT
+          echo "pr_mode=$PR_MODE" >> $GITHUB_OUTPUT
+
+          # 整合測試觸發判定：
+          # - 全自動模式 → 自動跑
+          # - PR 模式 → 自動跑（於現有分支）
+          # - 開工模式（implement）→ 不跑，等用戶手動 @claude PR
+          # - 互動模式 → 不跑
+          if [ "$FULL_AUTO_MODE" = "true" ] || [ "$PR_MODE" = "true" ]; then
+            echo "run_integration_tests=true" >> $GITHUB_OUTPUT
+            echo "🚀 下游整合測試 job 將自動啟動"
           else
-            echo "💬 Interactive mode: 僅 clarifier 階段，下游測試 job 不啟動"
+            echo "run_integration_tests=false" >> $GITHUB_OUTPUT
+            if [ "$PIPELINE_MODE" = "true" ]; then
+              echo "⏸️  開工模式：完成後需手動留言 @claude PR 才會跑整合測試"
+            else
+              echo "💬 互動模式：僅 clarifier 階段，下游測試 job 不啟動"
+            fi
           fi
 
           # Agent 名稱（反映實際執行的 stages）
-          if [ "${{ steps.detect_planner.outputs.planner_ok }}" = "true" ]; then
+          if [ "$PR_MODE" = "true" ]; then
+            echo "agent_name=pr-only" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.detect_planner.outputs.planner_ok }}" = "true" ]; then
             echo "agent_name=clarifier+planner+tdd-coordinator" >> $GITHUB_OUTPUT
           elif [ "$PLANNER_OK" != "skipped" ]; then
             echo "agent_name=clarifier+planner" >> $GITHUB_OUTPUT
@@ -421,7 +499,7 @@ jobs:
             echo "agent_name=clarifier" >> $GITHUB_OUTPUT
           fi
 
-          echo "📊 Clarifier: $CLARIFIER_OK | Planner: $PLANNER_OK | tdd-coordinator: $TDD_OK | Pipeline: $PIPELINE_MODE"
+          echo "📊 Clarifier: $CLARIFIER_OK | Planner: $PLANNER_OK | tdd-coordinator: $TDD_OK | FullAuto: $FULL_AUTO_MODE | PR: $PR_MODE | Pipeline: $PIPELINE_MODE"
 
       # ── 兜底：確保所有 local commits 都推到 remote ──
       - name: 推送 local commits 到 remote（兜底）
@@ -448,10 +526,18 @@ jobs:
   integration-tests:
     name: 自動化測試 + AI 驗收
     needs: claude
+    # 觸發條件：
+    # - 全自動模式（@claude 全自動）：需 claude 成功且有變更
+    # - PR 模式（@claude PR）：於現有分支直接跑，不需 claude_ok/has_changes
     if: |
-      needs.claude.outputs.claude_ok == 'true' &&
-      needs.claude.outputs.has_changes == 'true' &&
-      needs.claude.outputs.pipeline_mode == 'true'
+      needs.claude.outputs.run_integration_tests == 'true' &&
+      (
+        needs.claude.outputs.pr_mode == 'true' ||
+        (
+          needs.claude.outputs.claude_ok == 'true' &&
+          needs.claude.outputs.has_changes == 'true'
+        )
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 150
     permissions:
@@ -571,9 +657,9 @@ jobs:
             actions: read
           settings: .claude/settings.json
           plugin_marketplaces: |
-            https://github.com/j7-dev/wp-workflows.git
+            https://github.com/zenbuapps/zenbu-powers.git
           plugins: |
-            wp-workflows@wp-workflows
+            zenbu-powers@zenbu-powers
           prompt: |
             PHPUnit 整合測試失敗了。請根據以下測試輸出修復程式碼。
 
@@ -624,9 +710,9 @@ jobs:
             actions: read
           settings: .claude/settings.json
           plugin_marketplaces: |
-            https://github.com/j7-dev/wp-workflows.git
+            https://github.com/zenbuapps/zenbu-powers.git
           plugins: |
-            wp-workflows@wp-workflows
+            zenbu-powers@zenbu-powers
           prompt: |
             PHPUnit 整合測試第二次仍然失敗。請更仔細分析根本原因並修復。
 
@@ -1022,9 +1108,9 @@ jobs:
             actions: read
           settings: .claude/settings.json
           plugin_marketplaces: |
-            https://github.com/j7-dev/wp-workflows.git
+            https://github.com/zenbuapps/zenbu-powers.git
           plugins: |
-            wp-workflows@wp-workflows
+            zenbu-powers@zenbu-powers
           prompt: |
             你是 browser-tester，在 CI 環境中運作。
             這是一個 WordPress 外掛（Power Element），在 wp-env Docker 環境中運行。
@@ -1075,7 +1161,7 @@ jobs:
             --dangerously-skip-permissions
             --max-turns 200
             --model opus
-            --agent wp-workflows:browser-tester
+            --agent zenbu-powers:browser-tester
 
       # ── Smoke Test 媒體收集 + 上傳到 Bunny CDN ──
 
@@ -1130,7 +1216,11 @@ jobs:
           BUNNY_STORAGE_PASSWORD: ${{ secrets.BUNNY_STORAGE_PASSWORD }}
           BUNNY_CDN_URL: ${{ secrets.BUNNY_CDN_URL }}
         run: |
-          BRANCH_DIR=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          # 注意：issue_comment/pull_request_review_comment 觸發時 github.ref_name
+          # 指向 default branch（master），不是 issue 分支。優先使用 claude job
+          # 解析出的 branch_name，才會以 issue 分支為單位歸檔。
+          RAW_BRANCH="${{ needs.claude.outputs.branch_name || github.ref_name }}"
+          BRANCH_DIR=$(echo "$RAW_BRANCH" | sed 's/[^a-zA-Z0-9._-]/-/g')
           bash .github/scripts/upload-to-bunny.sh /tmp/smoke-media "ci/${BRANCH_DIR}/smoke-test"
 
       - name: 上傳 Smoke Test 媒體 Artifact (備份)
